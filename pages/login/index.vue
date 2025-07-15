@@ -60,21 +60,31 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { useAccountStore } from '@/stores/account'
 
-export default {
-  name: 'Login',
-  data() {
-    return {
-      email: '',
-      password: '',
-      isLogin: true,
+  definePageMeta({
+    layout: 'auth'
+  })
+
+  const account = useAccountStore()
+  const email = ref('')
+  const password = ref('')
+  const isLogin = ref(true)
+
+  const onSubmitLogin = async function(){
+    try {
+      const payload = {
+        email: email.value,
+        password: password.value,
+        isLogin: isLogin.value
+      }
+      
+      account.authenticateUser(payload)
+    } catch (e) {
+      console.log(e);
+      // this.$refs.errorMsg.classList.remove('hidden')
+      // this.$refs.errorMsg.textContent = e.data.error.message
     }
-  },
-  methods: {
-    onSubmitLogin() {
-      console.log("handle submit login");
-    },
-  },
-}
+  }
 </script>
