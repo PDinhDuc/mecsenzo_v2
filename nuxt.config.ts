@@ -13,8 +13,17 @@ export default defineNuxtConfig({
 
   modules: [
     '@vesp/nuxt-fontawesome',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxtjs/i18n'
   ],
+  i18n: {
+    langDir: '\locales',
+    defaultLocale: 'vi',
+    locales: [
+      { code: 'en', file: 'en.js', name: 'English' },
+      { code: 'vi', file: 'vi.js', name: 'Tiếng Việt' },
+    ]
+  },
   fontawesome: {
     component: 'fa',
     icons: {
@@ -22,4 +31,5 @@ export default defineNuxtConfig({
       brands: ['twitter'],
     },
   },
+  ssr: false,
 })

@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="type == 'button'"
+    v-if="type === 'button'"
     class="flex p-3 items-center border-b-[1px] cursor-pointer border-b-[#939496] hover:border-b-[#ff7200] group transition-all duration-300"
     @click.prevent="handleClickBtn"
   >
@@ -25,8 +25,9 @@
       ></div>
     </div>
   </div>
-  <nuxt-link
-    v-else-if="type == 'nuxt-link'"
+
+  <NuxtLink
+    v-else-if="type === 'nuxt-link'"
     class="flex p-3 items-center border-b-[1px] cursor-pointer border-b-[#939496] hover:border-b-[#ff7200] group transition-all duration-300"
     :to="to"
     @click.native="handleCloseNotify"
@@ -51,52 +52,47 @@
         class="absolute top-[2px] left-1 w-[26px] h-[26px] bg-slate-600 rounded-full dark:left-[38px] dark:bg-white transform-all duration-300"
       ></div>
     </div>
-  </nuxt-link>
+  </NuxtLink>
 </template>
 
-<script>
-export default {
-  props: {
-    icon: {
-      type: String,
-      default: () => 'envelope',
-    },
-    content: {
-      type: String,
-      default: () => '',
-    },
-    handleClickSubMenuItem: {
-      type: Function,
-      default: () => {
-        return function () {}
-      },
-    },
-    isDarkMode: {
-      type: Boolean,
-    },
-    type: {
-      type: String,
-      default: () => 'button',
-    },
-    to: {
-      type: Object,
-      default: () => ({
-        path: '/',
-      }),
-    },
+<script setup>
+import { defineProps, defineEmits } from 'vue'
+
+const emit = defineEmits(['closeNotify'])
+
+const props = defineProps({
+  icon: {
+    type: String,
+    default: 'envelope',
   },
-
-  emit: ['closeNotify'],
-
-  methods: {
-    handleCloseNotify() {
-      this.$emit('closeNotify')
-    },
-
-    handleClickBtn() {
-      this.handleCloseNotify()
-      this.handleClickSubMenuItem()
-    },
+  content: {
+    type: String,
+    default: '',
   },
+  handleClickSubMenuItem: {
+    type: Function,
+    default: () => () => {},
+  },
+  isDarkMode: {
+    type: Boolean,
+    default: false,
+  },
+  type: {
+    type: String,
+    default: 'button',
+  },
+  to: {
+    type: Object,
+    default: () => ({ path: '/' }),
+  },
+})
+
+function handleCloseNotify() {
+  emit('closeNotify')
+}
+
+function handleClickBtn() {
+  handleCloseNotify()
+  props.handleClickSubMenuItem()
 }
 </script>

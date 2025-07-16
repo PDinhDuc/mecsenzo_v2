@@ -5,67 +5,70 @@
     :class="`outline-none min-w-[120px] text-[1.2rem] rounded-[20px] select-none ${renderClassSize} ${renderClassColor}`"
     @click="handleClick"
   >
-    <slot></slot>
+    <slot />
   </button>
-  <nuxt-link v-else-if="type === 'link'">
-    <slot></slot>
-  </nuxt-link>
+
+  <NuxtLink v-else-if="type === 'link'" :to="to">
+    <slot />
+  </NuxtLink>
+
   <input
     v-else-if="type === 'submit'"
     type="submit"
-    :class="`outline-none min-w-[120px] text-[1.2rem] rounded-[20px] cursor-pointer ${renderClassSize} ${renderClassColor}`"
     :value="nameButton"
+    :class="`outline-none min-w-[120px] text-[1.2rem] rounded-[20px] cursor-pointer ${renderClassSize} ${renderClassColor}`"
   />
 </template>
 
-<script>
-export default {
-  props: {
-    type: {
-      type: String,
-      default: () => 'button',
-    },
-    size: {
-      type: String,
-      default: () => 'medium',
-    },
-    color: {
-      type: String,
-      default: () => '#ff7200',
-    },
-    variant: {
-      type: String,
-      default: () => 'contained',
-    },
-    handleClick: {
-      type: Function,
-      default: () => {
-        return function () {}
-      },
-    },
-    nameButton: {
-      type: String,
-      default: () => 'Submit',
-    },
-  },
-  computed: {
-    renderClassSize() {
-      const sizeWidth = {
-        small: [4, 8],
-        medium: [6, 12],
-        large: [8, 16],
-      }
+<script setup>
+import { computed } from 'vue'
 
-      return `px-[${sizeWidth[this.size][1]}px]
-              py-[${sizeWidth[this.size][0]}px]`
-    },
-    renderClassColor() {
-      if (this.variant === 'contained') {
-        return `text-[#fff] bg-[${this.color}] border border-[${this.color}] hover:opacity-[0.7]`
-      } else {
-        return `text-[${this.color}] bg-[#fff]  border border-[${this.color}] hover:text-[#fff] hover:bg-[${this.color}]`
-      }
-    },
+const props = defineProps({
+  type: {
+    type: String,
+    default: 'button',
   },
-}
+  size: {
+    type: String,
+    default: 'medium',
+  },
+  color: {
+    type: String,
+    default: '#ff7200',
+  },
+  variant: {
+    type: String,
+    default: 'contained',
+  },
+  handleClick: {
+    type: Function,
+    default: () => () => {},
+  },
+  nameButton: {
+    type: String,
+    default: 'Submit',
+  },
+  to: {
+    type: [String, Object],
+    default: '/',
+  },
+})
+
+const renderClassSize = computed(() => {
+  const sizeMap = {
+    small: ['4px', '8px'],
+    medium: ['6px', '12px'],
+    large: ['8px', '16px'],
+  }
+  const [py, px] = sizeMap[props.size] || sizeMap.medium
+  return `py-[${py}] px-[${px}]`
+})
+
+const renderClassColor = computed(() => {
+  if (props.variant === 'contained') {
+    return `text-white bg-[${props.color}] border border-[${props.color}] hover:opacity-70`
+  } else {
+    return `text-[${props.color}] bg-white border border-[${props.color}] hover:text-white hover:bg-[${props.color}]`
+  }
+})
 </script>

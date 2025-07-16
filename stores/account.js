@@ -10,53 +10,57 @@ export const useAccountStore = defineStore('account', {
   }),
   
   actions: {
-    authenticateUser(payload) {
+    async authenticateUser(payload) {
+      try {
+        let urlApi = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseAPIKey}`
+        if (payload.isLogin) {
+          urlApi = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseAPIKey}`
+        }
 
-      let urlApi = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseAPIKey}`
-
-      if (payload.isLogin) {
-        urlApi = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseAPIKey}`
-      }
-
-      return new Promise((resolve, reject) => {
-        $fetch(urlApi,{
+        const result = await $fetch(urlApi, {
           method: 'POST',
           body: {
             email: payload.email,
             password: payload.password,
             returnSecureToken: true
           }
-        }).then((result)=>{
+        })
 
-          const token = result.idToken
-          const tokenExpiration = new Date().getTime() + result.expiresIn * 1000
-          const email = result.email
+        const token = result.idToken
+        const tokenExpiration = new Date().getTime() + result.expiresIn * 1000
+        const email = result.email
 
+        if(process.client){
           localStorage.setItem('token', token)
           localStorage.setItem('tokenExpiration', tokenExpiration)
           localStorage.setItem('email', email)
+        }
 
-          Cookies.set('token', token)
-          Cookies.set('tokenExpiration', tokenExpiration)
-          Cookies.set('email', email)
+        Cookies.set('token', token)
+        Cookies.set('tokenExpiration', tokenExpiration)
+        Cookies.set('email', email)
 
-          state.token = token
-          state.account = email
-          this.logoutTimer(result.expiresIn * 1000)
-          resolve({ success: true })
-        }).catch((e) => reject(e.response))
-      })
+        this.token = token
+        this.account = email
+        this.logoutTimer(result.expiresIn * 1000)
+      
+        return { success: true }
+
+      } catch (e) {
+        console.log(e);
+        
+        const message = e?.data?.error?.message || e.message || 'Đăng nhập thất bại'
+        throw new Error(message)
+      }
     },
 
-    logoutTimer(context, duration) {
-      console.log('abc call logout');
-      
+    logoutTimer(duration) {
       setTimeout(() => {
-        context.commit('clearToken')
+        this.token = null
       }, duration)
     },
 
-    initAuth(context, req) {
+    initAuth(req) {
       let token, tokenExpiration, email
 
       if (req) {
@@ -83,14 +87,14 @@ export const useAccountStore = defineStore('account', {
 
       if (new Date().getTime() > tokenExpiration || !token) return false
 
-      context.dispatch('logoutTimer', tokenExpiration - new Date().getTime())
-      context.commit('setToken', token)
-      context.commit('setAccount', email)
+      this.logoutTimer(tokenExpiration - new Date().getTime())
+      this.token = token
+      this.account = email
     },
 
     clearAccount(context) {
-      context.commit('setToken', null)
-      context.commit('setAccount', null)
+      this.token = null
+      this.account = null
       localStorage.removeItem('token')
       localStorage.removeItem('email')
       localStorage.removeItem('tokenExpiration')

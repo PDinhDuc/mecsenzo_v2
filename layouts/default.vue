@@ -5,11 +5,11 @@
       <SidebarConversation @open-modal-add-space="openModalAddConversation" />
       <slot />
       <div
-        v-if="getIsShowModal"
+        v-if="showModalChatRoomStore.isShow"
         class="absolute bottom-0 right-0 top-0 left-0 z-[1000]"
-      > abc
+      >
         <ModalConversation
-          :conversation="getConversation"
+          :conversation="showModalChatRoomStore.conversation"
           @closeModal="closeModalConversation"
           @set-percent-upload="setPercentUploadAvatar"
           @clear-percent-upload="setPercentUploadAvatar(null)"
@@ -27,8 +27,21 @@
 
 <script setup>
   import {ref} from 'vue'
-  const user = ref(null)
-  user.value = useAccountStore.state
-  console.log(user);
-  
+
+  const showModalChatRoomStore = useModalChatRoomStore()
+  const percentUploadAvatar = ref(null);
+
+  const closeModalConversation = function() {
+    showModalChatRoomStore.closeModal();
+  }
+
+  const openModalAddConversation = function() {
+    showModalChatRoomStore.setConversation(null)
+    showModalChatRoomStore.openModal()
+  }
+
+  const setPercentUploadAvatar = function(percent) {
+    percentUploadAvatar = percent
+  }
+
 </script>
