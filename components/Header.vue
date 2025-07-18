@@ -5,13 +5,13 @@
     <div
       class="flex items-center max-w-[1200px] m-auto h-full justify-between px-4 xl:px-0"
     >
-      <NuxtLink
-        :to="{ path: '/' }"
+      <nuxt-link
+        :to="{ path: '/', name: `index___${$i18n.locale}` }"
         class="flex items-center"
-        @click="handleCloseNotifyAndMenu"
+        @click.native="handleCloseNotifyAndMenu"
       >
         <img
-          src="~/assets/images/logo.png"
+          src="@/assets/images/logo.png"
           alt="logo"
           class="w-[68px] h-full"
         />
@@ -20,7 +20,7 @@
         >
           MECSENZO
         </h1>
-      </NuxtLink>
+      </nuxt-link>
       <div class="h-full">
         <div class="relative flex items-center h-full">
           <div
@@ -28,18 +28,16 @@
             @click="handleToggleNotify"
           >
             <div
-              v-if="numberNewNotify > 0"
+              v-if="getNumberNewNotify > 0"
               class="absolute top-[-4px] right-[-4px] w-[16px] h-[16px] bg-red-500 rounded-full text-white text-[0.8rem] flex items-center justify-center"
             >
-              {{
-                numberNewNotify
-              }}
+              {{ getNumberNewNotify }}
             </div>
             <fa icon="bell" class="text-[1.2rem]" />
           </div>
           <div
             v-if="isShowNotify"
-            class="notify-container absolute w-[350px] max-h-[70vh] overflow-y-auto px-4 py-4 bg-white shadow-xl top-[110%] right-[calc(100%-40px)] rounded-[20px] after:content-[''] after:w-full after:h-[20px] after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent z-[100] origin-top transition-all duration-150 ease-in-out animate-[leftIn_0.3s_ease-in-out] md:animate-[scaleDown_0.15s_ease-in-out] dark:bg-dark_bg_nav"
+            class="notify-container absolute w-[350px] max-h-[70vh] overflow-y-auto px-4 py-4 bg-white shadow-xl top-[110%] right-[calc(100%-40px)] rounded-[20px] after:content[''] after:w-full after:h-[20px] after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent z-[100] origin-top transition-all duration-150 ease-in-out animate-[leftIn_0.3s_ease-in-out] md:animate-[scaleDown_0.15s_ease-in-out] dark:bg-dark_bg_nav"
             @scroll="handleScroll"
           >
             <div v-for="(notify, index) in notifies" :key="index">
@@ -49,7 +47,9 @@
                 :timestamp="notify.timestamp"
                 :link="{
                   path: `${splitBackslashNotifyLink(notify.link)}`,
-                  name: `${splitBackslashNotifyLink(notify.link)}___${$i18n.locale}`,
+                  name: `${splitBackslashNotifyLink(notify.link)}___${
+                    $i18n.locale
+                  }`,
                 }"
                 @closeNotify="handleCloseNotify"
               />
@@ -63,20 +63,19 @@
           </div>
           <div
             v-if="isShowChooseLang"
-            class="notify-container absolute w-[300px] max-h-[70vh] overflow-y-auto px-4 py-4 bg-white shadow-xl CCtop-[110%] right-[calc(100%-100px)] rounded-[20px] after:content-[''] after:w-full after:h-[20px] after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent z-[100] origin-top transition-all duration-150 ease-in-out animate-[leftIn_0.3s_ease-in-out] md:animate-[scaleDown_0.15s_ease-in-out] dark:bg-dark_bg_nav"
+            class="notify-container absolute w-[300px] max-h-[70vh] overflow-y-auto px-4 py-4 bg-white shadow-xl top-[110%] right-[calc(100%-100px)] rounded-[20px] after:content[''] after:w-full after:h-[20px] after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent z-[100] origin-top transition-all duration-150 ease-in-out animate-[leftIn_0.3s_ease-in-out] md:animate-[scaleDown_0.15s_ease-in-out] dark:bg-dark_bg_nav"
           >
             <div
               v-for="locale in availableLocales"
               :key="locale.code"
               class="flex justify-between items-center py-3 px-1 cursor-pointer border-b-[1px] border-b-[#939496]"
             >
-              <NuxtLink
+              <nuxt-link
                 :to="switchLocalePath(locale.code)"
                 class="flex-1 dark:text-dark_text_strong"
-                @click="handleToggleChooseLang(locale.code)"
-              >
-                {{ locale.name }}
-              </NuxtLink>
+                @click.native="handleToggleChooseLang(locale.code)"
+                >{{ locale.name }}
+              </nuxt-link>
               <div
                 v-if="$i18n.locale === locale.code"
                 class="flex justify-center items-center w-[20px] h-[20px] bg-[#33b5e7] rounded-full"
@@ -96,7 +95,7 @@
               v-if="user"
               class="w-full flex justify-center items-center py-3 md:py-0 dark:bg-dark_bg_nav dark:text-dark_text_strong"
             >
-              <Avatar
+              <avatar
                 :is-have-avatar="!!avatar"
                 :src-image="avatar"
                 :first-char="user && user.fullName.charAt(0)"
@@ -111,10 +110,10 @@
                 class="hidden text-dark_bg text-[1.2rem] ml-2 md:block dark:text-white"
               />
             </div>
-            <div class="sub-menu absolute w-[300px] px-4 py-4 bg-white shadow-xl
-             top-[110%] right-0 rounded-[20px] after:content-[''] after:w-full after:h-[20px]
-              after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent
-               z-[100] origin-top transition-all duration-150 ease-in-out dark:bg-dark_bg_nav">
+
+            <div
+              class="sub-menu absolute w-[300px] px-4 py-4 bg-white shadow-xl top-[110%] right-0 rounded-[20px] after:content[''] after:w-full after:h-[20px] after:bg-slate-500 after:absolute after:top-[-20px] after:left-0 after:bg-transparent z-[100] origin-top transition-all duration-150 ease-in-out dark:bg-dark_bg_nav"
+            >
               <SubMenuItem
                 icon="user"
                 :content="$t('nav.profile')"
@@ -125,14 +124,17 @@
               <SubMenuItem
                 icon="plus"
                 :content="$t('nav.addFriend')"
-                :to="{ path: 'add-friend'}"
+                :to="{
+                  path: 'add-friend',
+                  name: `add-friend___${$i18n.locale}`,
+                }"
                 type="nuxt-link"
                 @closeNotify="handleCloseNotifyAndMenu"
               />
               <SubMenuItem
                 icon="chart-line"
                 :content="$t('nav.statistic')"
-                :to="localePath({ path: 'statistic', name: `statistic___${$i18n.locale}` })"
+                :to="{ path: 'statistic', name: `statistic___${$i18n.locale}` }"
                 type="nuxt-link"
                 @closeNotify="handleCloseNotifyAndMenu"
               />
@@ -155,8 +157,7 @@
           </div>
           <div
             ref="btnHamburger"
-            class="btn-hamburger noSelect flex faces
-            flex-col justify-center items-center w-[40px] h-[40px] bg-slate-200 rounded-full md:hidden cursor-pointer"
+            class="btn-hamburger noSelect flex flex-col justify-center items-center w-[40px] h-[40px] bg-slate-200 rounded-full md:hidden cursor-pointer"
             @click="handleToggleMenu"
           >
             <span></span>
@@ -187,202 +188,222 @@
   </header>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useNuxtApp, useRouter } from '#app'
-import Avatar from '~/components/Avatar.vue'
-import SubMenuItem from '~/components/SubMenuItem.vue'
-import ProgressLoader from '~/components/ProgressLoader.vue'
-import ModalProfile from '~/components/ModalProfile.vue'
-import NotifyItem from '~/components/NotifyItem.vue'
-import LoaderUser from '~/components/LoaderUser.vue'
-import { getUserByEmail, setActiveUser } from '~/api/user'
+<script>
+import { mapGetters } from 'vuex'
+import { localize } from 'vee-validate'
+import Avatar from './Avatar.vue'
+import SubMenuItem from './SubMenuItem.vue'
+import ProgressLoader from './ProgressLoader.vue'
+import ModalProfile from './ModalProfile.vue'
+import NotifyItem from './NotifyItem.vue'
+import LoaderUser from './LoaderUser.vue'
+import { getUserByEmail, setActiveUser } from '~/api/user.api'
 import { getNotify, seenNotifies } from '~/api/notify'
-import { useI18n } from 'vue-i18n'
-import { useLocalePath } from '#i18n'
 
-// Nuxt app context
-const { $i18n, switchLocalePath } = useNuxtApp()
-const router = useRouter()
+export default {
+  components: {
+    Avatar,
+    SubMenuItem,
+    ModalProfile,
+    NotifyItem,
+    ProgressLoader,
+    LoaderUser,
+  },
 
-const { t } = useI18n()
-const localePath = useLocalePath()
+  data() {
+    return {
+      user: null,
+      avatar: null,
+      isShowModalProfile: false,
+      isShowNotify: false,
+      notifies: null,
+      lastDocNotify: null,
+      isShowChooseLang: false,
+      percentUploadAvatar: null,
+      isShowLoaderUser: true,
+    }
+  },
 
-// Reactive state
-const user = ref(null)
-const avatar = ref(null)
-const isShowModalProfile = ref(false)
-const isShowNotify = ref(false)
-const notifies = ref(null)
-const lastDocNotify = ref(null)
-const isShowChooseLang = ref(false)
-const percentUploadAvatar = ref(null)
-const isShowLoaderUser = ref(true)
-const mainMenu = ref(null)
-const btnHamburger = ref(null)
-const currentLoadNotify = ref(1)
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-// Computed properties
-const currentEmail = computed(() => useAccountStore().getAccount)
+    getNumberNewNotify() {
+      let count = 0
+      this.notifies &&
+        this.notifies.forEach((notify) => {
+          if (notify.seen === false) {
+            count++
+          }
+        })
+      return count
+    },
 
-const numberNewNotify = computed(() => {
-  let count = 0
-  if (notifies.value) {
-    notifies.value.forEach((notify) => {
-      if (notify.seen === false) {
-        count++
+    availableLocales() {
+      return this.$i18n.locales
+    },
+
+    splitBackslashNotifyLink() {
+      return (link) => {
+        return link.substr(1)
       }
-    })
-  }
-  return count
-})
+    },
+  },
 
-const availableLocales = computed(() => $i18n.locales)
+  async created() {
+    await this.setUser()
+    this.avatar = this.user && this.user.avatar
 
-const splitBackslashNotifyLink = (link) => {
-  return link.substr(1)
-}
-
-// Methods
-const setUser = async () => {
-  user.value = await getUserByEmail(currentEmail.value)
-  isShowLoaderUser.value = false
-}
-
-const handleLogout = () => {
-  setActiveUser(false)
-  localStorage.removeItem('user')
-  store.dispatch('account/clearAccount')
-  router.push({
-    path: '/login',
-    name: `login___${$i18n.locale}`,
-  })
-}
-
-const handleToggleMenu = () => {
-  handleCloseNotify()
-  handleCloseChooseLang()
-  if (mainMenu.value && btnHamburger.value) {
-    mainMenu.value.classList.toggle('main-menu--show')
-    btnHamburger.value.classList.toggle('btn-hamburger--active')
-  }
-}
-
-const handleCloseMenu = () => {
-  if (mainMenu.value && btnHamburger.value) {
-    mainMenu.value.classList.remove('main-menu--show')
-    btnHamburger.value.classList.remove('btn-hamburger--active')
-  }
-}
-
-const handleShowProfile = () => {
-  isShowModalProfile.value = true
-}
-
-const closeModalProfile = () => {
-  isShowModalProfile.value = false
-}
-
-const handleUpdateUser = async (payload) => {
-  await setUser()
-  if (payload) {
-    avatar.value = payload.urlAvatarTemp
-    user.value.fullName = payload.newUser.fullName
-  }
-}
-
-const handleToggleNotify = async () => {
-  handleCloseMenu()
-  handleCloseChooseLang()
-  if (!isShowNotify.value) {
-    await seenNotifies(user.value.email)
-  }
-  isShowNotify.value = !isShowNotify.value
-  console.log(isShowNotify.value);
-  
-  currentLoadNotify.value = 1
-}
-
-const handleCloseNotify = () => {
-  isShowNotify.value = false
-}
-
-const handleCloseNotifyAndMenu = () => {
-  handleCloseMenu()
-  handleCloseNotify()
-}
-
-const setNotifies = (notifiesDoc) => {
-  const notifiesMapped = notifiesDoc.map((doc) => ({ ...doc.data(), id: doc.id }))
-  notifies.value = notifiesMapped
-  lastDocNotify.value = notifiesDoc[notifiesDoc.length - 1]
-}
-
-
-
-
-const loadMoreNotify = (notifiesDoc) => {
-  console.log('call fn loadmoreNotify' + notifiesDoc);
-  
-  const notifiesMore = notifiesDoc.map((doc) => ({ ...doc.data(), id: doc.id }))
-  const lastDoc = notifiesDoc[notifiesDoc.length - 1]
-  if (lastDoc && lastDoc.id !== lastDocNotify.value?.id) {
-    lastDocNotify.value = lastDoc
-    notifies.value = [...notifies.value, ...notifiesMore]
-  }
-}
-
-const handleScroll = (e) => {
-  if (
-    Math.ceil(e.target.scrollTop) + e.target.clientHeight >= e.target.scrollHeight
-  ) {
     getNotify(
-      currentEmail.value,
-      (notifies) => loadMoreNotify(notifies.value),
-      lastDocNotify.value
+      this.getCurrentEmail,
+      (notifies) => {
+        this.setNotifies(notifies)
+      },
+      this.lastDocNotify
     )
-  }
+  },
+
+  mounted() {
+    let currentTheme = localStorage.getItem('theme')
+    if (!currentTheme) {
+      currentTheme = 'light'
+      localStorage.setItem('theme', currentTheme)
+    }
+
+    if (currentTheme === 'dark') {
+      const htmlEl = document.querySelector('html')
+      htmlEl.classList.add('dark')
+    }
+  },
+
+  methods: {
+    async setUser() {
+      this.user = await getUserByEmail(this.getCurrentEmail)
+      this.isShowLoaderUser = false
+    },
+
+    handleLogout() {
+      setActiveUser(false)
+      localStorage.removeItem('user')
+      this.$store.dispatch('account/clearAccount')
+      this.$router.push({
+        path: '/login',
+        name: `login___${this.$i18n.locale}`,
+      })
+    },
+
+    handleToggleMenu() {
+      this.handleCloseNotify()
+      this.handleCloseChooseLang()
+      this.$refs.mainMenu.classList.toggle('main-menu--show')
+      this.$refs.btnHamburger.classList.toggle('btn-hamburger--active')
+    },
+
+    handleCloseMenu() {
+      this.$refs.mainMenu.classList.remove('main-menu--show')
+      this.$refs.btnHamburger.classList.remove('btn-hamburger--active')
+    },
+
+    handleShowProfile() {
+      this.isShowModalProfile = true
+    },
+
+    closeModalProfile() {
+      this.isShowModalProfile = false
+    },
+
+    async handleUpdateUser(payload) {
+      await this.setUser()
+      if (payload) {
+        this.avatar = payload.urlAvatarTemp
+        this.user.fullName = payload.newUser.fullName
+      }
+    },
+
+    async handleToggleNotify() {
+      this.handleCloseMenu()
+      this.handleCloseChooseLang()
+      if (!this.isShowNotify) {
+        await seenNotifies(this.user.email)
+      }
+      this.isShowNotify = !this.isShowNotify
+      this.currentLoadNotify = 1
+    },
+
+    handleCloseNotify() {
+      this.isShowNotify = false
+    },
+
+    handleCloseNotifyAndMenu() {
+      this.handleCloseMenu()
+      this.isShowNotify = false
+    },
+
+    setNotifies(notifiesDoc) {
+      const notifies = notifiesDoc.map((doc) => ({ ...doc.data(), id: doc.id }))
+      this.notifies = notifies
+      this.lastDocNotify = notifiesDoc[notifiesDoc.length - 1]
+    },
+
+    loadMoreNotify(notifiesDoc) {
+      const notifiesMore = notifiesDoc.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }))
+      const lastDoc = notifiesDoc[notifiesDoc.length - 1]
+      if (lastDoc && lastDoc.id !== this.lastDocNotify.id) {
+        this.lastDocNotify = lastDoc
+        this.notifies = [...this.notifies, ...notifiesMore]
+      }
+    },
+
+    handleScroll(e) {
+      if (
+        Math.ceil(e.target.scrollTop) + e.target.clientHeight >=
+        e.target.scrollHeight
+      ) {
+        getNotify(
+          this.getCurrentEmail,
+          (notifies) => {
+            this.loadMoreNotify(notifies)
+          },
+          this.lastDocNotify
+        )
+      }
+    },
+
+    handleToggleChooseLang(code) {
+      localize(code)
+      this.handleCloseMenu()
+      this.handleCloseNotify()
+      this.isShowChooseLang = !this.isShowChooseLang
+    },
+
+    handleCloseChooseLang() {
+      this.isShowChooseLang = false
+    },
+
+    handleChangeModeDarkTheme() {
+      const htmlEl = document.querySelector('html')
+      htmlEl.classList.toggle('dark')
+
+      let currentTheme = localStorage.getItem('theme')
+      if (!currentTheme) {
+        currentTheme = 'dark'
+        localStorage.setItem('theme', currentTheme)
+      } else if (currentTheme === 'light') {
+        localStorage.setItem('theme', 'dark')
+      } else {
+        localStorage.setItem('theme', 'light')
+      }
+    },
+
+    setPercentUploadAvatar(percent) {
+      this.percentUploadAvatar = percent
+    },
+  },
 }
-
-const handleToggleChooseLang = (code) => {
-  handleCloseMenu()
-  handleCloseNotify()
-  isShowChooseLang.value = !isShowChooseLang.value
-}
-
-const handleCloseChooseLang = () => {
-  isShowChooseLang.value = false
-}
-
-const handleChangeModeDarkTheme = () => {
-  const htmlEl = document.querySelector('html')
-  htmlEl.classList.toggle('dark')
-  const currentTheme = localStorage.getItem('theme') || 'light'
-  localStorage.setItem('theme', currentTheme === 'light' ? 'dark' : 'light')
-}
-
-const setPercentUploadAvatar = (percent) => {
-  percentUploadAvatarCDR.value = percent
-}
-
-// Lifecycle hooks
-onMounted(async () => {
-  await setUser()
-  avatar.value = user.value && user.value.avatar
-
-  if(currentEmail.value){
-    getNotify(
-      currentEmail.value,
-      setNotifies,
-      lastDocNotify.value ?? null
-    )
-  }
-
-  const currentTheme = localStorage.getItem('theme') || 'light'
-  if (currentTheme === 'dark') {
-    document.querySelector('html').classList.add('dark')
-  }
-})
 </script>
 
 <style scoped>

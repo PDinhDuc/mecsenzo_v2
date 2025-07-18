@@ -29,19 +29,23 @@
   </div>
 </template>
 
-<script setup>
-const props = defineProps({
-  src: {
-    type: String,
-    default: '',
+<script>
+export default {
+  props: {
+    src: {
+      type: String,
+      default: '',
+    },
   },
-})
 
-const emit = defineEmits(['close-show-image-message'])
+  emits: ['close-show-image-message'],
 
-function closeShowImageMessage() {
-  emit('close-show-image-message')
+  methods: {
+    closeShowImageMessage() {
+      this.$emit('close-show-image-message')
+    },
+  },
 }
 </script>
 
-<style scoped></style>
+<style></style>

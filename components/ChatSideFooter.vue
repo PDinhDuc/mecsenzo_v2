@@ -41,22 +41,20 @@
           @click="toggleEmojiPicker"
         >
           <img
-            src="~/assets/images/icon.png"
+            src="@/assets/images/icon.png"
             alt="emoji"
             class="w-[28px] object-fill"
           />
           <div
-            v-if="isClient && isShowIconPicker"
+            v-if="checkIsClientSide && isShowIconPicker"
             class="absolute w-[50px] h-[50px]"
           >
-            <ClientOnly>
-              <VEmojiPicker
-                ref="emojiPicker"
-                class="absolute right-[-50px] md:right-[0px] translate-y-[calc(-100%)] h-[330px]"
-                :show-search="false"
-                @select="handleSelectEmoji"
-              />
-            </ClientOnly>
+            <VEmojiPicker
+              ref="emojiPicker"
+              class="absolute right-[-50px] md:right-[0px] translate-y-[calc(-100%)] h-[330px]"
+              :show-search="false"
+              @select="handleSelectEmoji"
+            />
           </div>
         </div>
       </div>
@@ -67,100 +65,88 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch, onMounted } from 'vue'
-import { useNuxtApp } from '#app'
-import ButtonIcon from '~/components/ButtonIcon.vue'
-import { ClientOnly } from '#components'
-
-// Dynamic import for VEmojiPicker (client-side only)
-const VEmojiPicker = defineAsyncComponent(() => import('v-emoji-picker'))
-
-// Props
-const props = defineProps({
-  colorBtn: {
-    type: String,
-    default: '#0084ff',
+<script>
+import ButtonIcon from './ButtonIcon.vue'
+export default {
+  components: { ButtonIcon },
+  props: {
+    colorBtn: {
+      type: String,
+      default: () => '#0084ff',
+    },
+    isDisableInputMessage: Boolean,
   },
-  isDisableInputMessage: {
-    type: Boolean,
-    default: false,
+
+  emits: [
+    'set-file-image-input',
+    'show-preview-chat-voice',
+    'send-message',
+    'focus-input-message',
+    'blur-input-message',
+    'select-emoji',
+  ],
+
+  data() {
+    return {
+      isShowIconPicker: false,
+    }
   },
-})
 
-// Emits
-const emit = defineEmits([
-  'set-file-image-input',
-  'show-preview-chat-voice',
-  'send-message',
-  'focus-input-message',
-  'blur-input-message',
-  'select-emoji',
-  'update:input-message',
-])
+  computed: {
+    checkIsClientSide() {
+      return !process.server
+    },
+  },
+  mounted() {
+    this.$refs.iconFooter.style.color = this.colorBtn
+  },
 
-// Reactive state
-const isShowIconPicker = ref(false)
-const inputImage = ref(null)
-const inputMessage = ref(null)
-const iconFooter = ref(null)
-const emojiPicker = ref(null)
+  updated() {
+    this.$refs.iconFooter.style.color = this.colorBtn
+  },
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
+  methods: {
+    toggleEmojiPicker() {
+      this.isShowIconPicker = !this.isShowIconPicker
+    },
 
-// Client-side check
-const isClient = ref(false)
+    handleSetFileImageInput(e) {
+      const fileImage = e.target.files[0]
+      this.$emit('set-file-image-input', fileImage)
 
-// Methods
-const toggleEmojiPicker = () => {
-  isShowIconPicker.value = !isShowIconPicker.value
+      this.$refs.inputMessage.value = ''
+    },
+
+    handleShowPreviewChatVoice() {
+      this.$emit('show-preview-chat-voice')
+    },
+
+    handleSendMessage() {
+      this.$refs.inputMessage.value = ''
+      this.$emit('send-message')
+    },
+
+    handleFocusInputMessage() {
+      this.$emit('focus-input-message')
+    },
+
+    handleBlurInputMessage() {
+      this.$emit('blur-input-message')
+    },
+
+    handleSelectEmoji(emoji) {
+      const inputMessageEl = this.$refs.inputMessage
+      inputMessageEl.value = inputMessageEl.value + emoji.data
+      inputMessageEl.focus()
+      this.$refs.inputMessage.focus()
+      this.$emit('select-emoji', emoji)
+    },
+
+    updateInputMessage(e) {
+      this.$emit('update:input-message', e.target.value)
+    },
+  },
 }
-
-const handleSetFileImageInput = (e) => {
-  const fileImage = e.target.files[0]
-  emit('set-file-image-input', fileImage)
-  if (inputMessage.value) inputMessage.value.value = ''
-}
-
-const handleShowPreviewChatVoice = () => {
-  emit('show-preview-chat-voice')
-}
-
-const handleSendMessage = () => {
-  if (inputMessage.value) inputMessage.value.value = ''
-  emit('send-message')
-}
-
-const handleFocusInputMessage = () => {
-  emit('focus-input-message')
-}
-
-const handleBlurInputMessage = () => {
-  emit('blur-input-message')
-}
-
-const handleSelectEmoji = (emoji) => {
-  if (inputMessage.value) {
-    inputMessage.value.value += emoji.data
-    inputMessage.value.focus()
-  }
-  emit('select-emoji', emoji)
-}
-
-const updateInputMessage = (e) => {
-  emit('update:input-message', e.target.value)
-}
-
-// Lifecycle hooks and watchers
-onMounted(() => {
-  isClient.value = true
-  if (iconFooter.value) iconFooter.value.style.color = props.colorBtn
-})
-
-watch(() => props.colorBtn, (newColor) => {
-  if (iconFooter.value) iconFooter.value.style.color = newColor
-})
 </script>
 
 <style></style>

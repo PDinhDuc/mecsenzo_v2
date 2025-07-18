@@ -6,19 +6,19 @@
       </p>
     </div>
     <div>
-      <div v-if="typeInput !== 'file'">
-        <input
-          ref="inputField"
-          :type="typeInput"
-          :name="name"
-          :value="field.value"
-          class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139)] focus:border-b-[#ff7200]"
-          :readonly="!isEdit"
-          @input="field.handleInput($event.target.value)"
-        />
-        <p v-if="meta.touched && errorMessage" class="text-red-500 text-[0.9rem] italic mt-2">
-          {{ errorMessage }}
-        </p>
+      <div v-if="typeInput != 'file'">
+        <ValidationProvider v-slot="{ errors }" :rules="rule">
+          <input
+            ref="inputField"
+            :type="typeInput"
+            :name="labelField"
+            :value="valueField"
+            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139] focus:border-b-[#ff7200]"
+            readonly
+            @input="$emit('onChangeField', [name, $event.target.value])"
+          />
+          <p class="text-red-500 text-[0.9rem] italic mt-2">{{ errors[0] }}</p>
+        </ValidationProvider>
       </div>
       <div v-else>
         <input
@@ -53,79 +53,70 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { useField } from 'vee-validate'
+<script>
 import { createTempUrlForImageFile } from '~/helper/FileHelper'
 
-// Props
-const props = defineProps({
-  name: {
-    type: String,
-    default: '',
+export default {
+  props: {
+    name: {
+      type: String,
+      default: () => '',
+    },
+    labelField: {
+      type: String,
+      default: () => '',
+    },
+    typeInput: {
+      type: String,
+      default: () => 'text',
+    },
+    valueField: {
+      type: String,
+      default: () => '',
+    },
+    rule: {
+      type: String || null,
+      default: () => null,
+    },
   },
-  labelField: {
-    type: String,
-    default: '',
-  },
-  typeInput: {
-    type: String,
-    default: 'text',
-  },
-  valueField: {
-    type: String,
-    default: '',
-  },
-  rule: {
-    type: [String, null],
-    default: null,
-  },
-})
+  emits: ['onChangeField', 'onChangeFile'],
 
-// Emits
-const emit = defineEmits(['onChangeField', 'onChangeFile'])
-
-// Reactive state
-const isEdit = ref(false)
-const inputField = ref(null)
-
-// VeeValidate field
-const { field, errorMessage, meta } = useField(props.name, props.rule, {
-  initialValue: props.valueField,
-  validateOnValueUpdate: false,
-})
-
-// Watch for valueField changes to sync with VeeValidate field
-watch(() => props.valueField, (newValue) => {
-  field.value = newValue
-})
-
-// Methods
-const handleEnableEdit = () => {
-  if (props.typeInput !== 'file' && props.typeInput !== 'number') {
-    const inputFieldEl = inputField.value
-    if (inputFieldEl) {
-      const end = inputFieldEl.value.length
-      inputFieldEl.setSelectionRange(end, end)
-      inputFieldEl.focus()
+  data() {
+    return {
+      isEdit: false,
     }
-  }
-  isEdit.value = true
-}
+  },
 
-const handleDisableEdit = () => {
-  isEdit.value = false
-}
+  methods: {
+    handleEnableEdit() {
+      const inputFieldEl = this.$refs.inputField
 
-const handleChangeAvatar = (e) => {
-  const fileImage = createTempUrlForImageFile(e.target.files[0])
-  emit('onChangeFile', fileImage)
-}
+      if (this.typeInput !== 'file' && this.typeInput !== 'number') {
+        const end = inputFieldEl.value.length
+        inputFieldEl.setSelectionRange(end, end)
+        inputFieldEl.readOnly = false
+        inputFieldEl.focus()
+      }
+      if (this.typeInput === 'number') {
+        inputFieldEl.readOnly = false
+      }
 
-// Sync input changes with emit
-watch(field.value, (newValue) => {
-  emit('onChangeField', [props.name, newValue])
-})
+      this.isEdit = true
+    },
+
+    handleDisableEdit() {
+      const inputFieldEl = this.$refs.inputField
+
+      if (this.typeInput !== 'file' && this.typeInput !== 'number') {
+        inputFieldEl.readOnly = true
+      }
+      this.isEdit = false
+    },
+
+    handleChangeAvatar(e) {
+      const fileImage = createTempUrlForImageFile(e.target.files[0])
+      this.$emit('onChangeFile', fileImage)
+    },
+  },
+}
 </script>
-
-<style></style>

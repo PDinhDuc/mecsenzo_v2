@@ -24,70 +24,80 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, watch, computed } from 'vue'
-
-const props = defineProps({
-  size: {
-    type: String,
-    default: 'medium',
+<script>
+export default {
+  props: {
+    size: {
+      type: String,
+      default: () => 'medium',
+    },
+    percent: {
+      type: Number,
+      default: () => 0,
+    },
   },
-  percent: {
-    type: Number,
-    default: 0,
-  },
-})
 
-const container = ref(null)
-const circleAll = ref(null)
-const circlePercent = ref(null)
-
-const sizeWidth = {
-  tiny: 50,
-  small: 100,
-  medium: 200,
-  large: 400,
-}
-
-const sizeStroke = {
-  tiny: 2,
-  small: 4,
-  medium: 6,
-  large: 10,
-}
-
-const totalLengthCircle = ref(null)
-
-onMounted(() => {
-  const radius = Number(circleAll.value.getAttribute('r'))
-  totalLengthCircle.value = 2 * Math.PI * radius
-
-  container.value.style.width = `${sizeWidth[props.size]}px`
-  container.value.style.height = `${sizeWidth[props.size]}px`
-
-  circleAll.value.style.stroke = '#e2e8f0'
-  circlePercent.value.style.stroke = '#33b5e7'
-  circleAll.value.style.strokeWidth = sizeStroke[props.size]
-
-  circlePercent.value.style.strokeDasharray = totalLengthCircle.value
-  circlePercent.value.style.strokeDashoffset =
-    totalLengthCircle.value - (props.percent / 100) * totalLengthCircle.value
-  circlePercent.value.style.strokeWidth = sizeStroke[props.size]
-})
-
-watch(
-  () => props.percent,
-  (newVal) => {
-    const percentFixed = newVal.toFixed(0)
-    if (totalLengthCircle.value && circlePercent.value) {
-      circlePercent.value.style.strokeDashoffset =
-        totalLengthCircle.value - (percentFixed / 100) * totalLengthCircle.value
+  data() {
+    return {
+      sizeWidth: {
+        tiny: 50,
+        small: 100,
+        medium: 200,
+        large: 400,
+      },
+      sizeFont: {
+        tiny: 0.5,
+        small: 0.8,
+        medium: 1,
+        large: 1.2,
+      },
+      sizeStroke: {
+        tiny: 2,
+        small: 4,
+        medium: 6,
+        large: 10,
+      },
+      offsetDash: {
+        tiny: 65,
+        small: 130,
+        medium: 250,
+        large: 520,
+      },
+      totalLengthCircle: null,
     }
-  }
-)
+  },
+
+  watch: {
+    percent: {
+      handler(newValue) {
+        const percentFixed = newValue.toFixed(0)
+        this.$refs.circlePercent.style.strokeDashoffset =
+          this.totalLengthCircle - (percentFixed / 100) * this.totalLengthCircle
+      },
+    },
+  },
+
+  mounted() {
+    const radiusCircle = Number(this.$refs.circleAll.getAttribute('r'))
+    const totalLengthCircle = 2 * Math.PI * radiusCircle
+    this.totalLengthCircle = totalLengthCircle
+
+    this.$refs.container.style.width = this.sizeWidth[this.size] + 'px'
+    this.$refs.container.style.height = this.sizeWidth[this.size] + 'px'
+
+    this.$refs.circleAll.style.stroke = '#e2e8f0'
+    this.$refs.circlePercent.style.stroke = '#33b5e7'
+    this.$refs.circleAll.style.strokeWidth = this.sizeStroke[this.size]
+
+    this.$refs.circlePercent.style.strokeDasharray = totalLengthCircle
+    this.$refs.circlePercent.style.strokeDashoffset =
+      totalLengthCircle - (this.percent / 100) * totalLengthCircle
+    this.$refs.circlePercent.style.strokeWidth = this.sizeStroke[this.size]
+  },
+}
 </script>
 
-<style scoped>
+<style>
 circle {
   fill: none;
 }

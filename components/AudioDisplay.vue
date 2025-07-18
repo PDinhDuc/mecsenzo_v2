@@ -3,23 +3,20 @@
     v-if="url"
     :class="`container-result ${isColorWhite ? 'container-result--white' : ''}`"
   >
-    <button class="btn-controller dark:text-white" @click="handleTogglePlayPreview">
+    <button
+      class="btn-controller dark:text-white"
+      @click="handleTogglePlayPreview"
+    >
       <fa
         v-if="isPreviewPause"
         icon="play"
-        :class="isColorWhite ? 'text-white' : ''"
+        :class="`${isColorWhite ? 'text-white' : ''}`"
       />
-      <fa
-        v-else
-        icon="pause"
-        :class="isColorWhite ? 'text-white' : ''"
-      />
+      <fa v-else icon="pause" :class="`${isColorWhite ? 'text-white' : ''}`" />
     </button>
-
     <div class="process-audio">
       <div ref="processCurrent" class="process-current"></div>
     </div>
-
     <div
       :class="`time-audio ${
         isColorWhite ? 'text-white' : 'text-[#888] dark:text-white'
@@ -27,7 +24,6 @@
     >
       {{ Math.ceil(currentTimePreview) }}:{{ Math.ceil(totalTimePreview) }}
     </div>
-
     <audio
       ref="audioEl"
       class="audio-el"
@@ -39,56 +35,49 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { watch } from 'vue'
-
-const props = defineProps({
-  url: {
-    type: String,
-    default: null,
+<script>
+export default {
+  props: {
+    url: {
+      type: String,
+      default: () => null,
+    },
+    fileName: {
+      type: String,
+      default: () => '',
+    },
+    isColorWhite: {
+      type: Boolean,
+    },
   },
-  fileName: {
-    type: String,
-    default: '',
+
+  data() {
+    return {
+      isPreviewPause: true,
+      currentTimePreview: null,
+      totalTimePreview: null,
+    }
   },
-  isColorWhite: {
-    type: Boolean,
-    default: false,
+
+  methods: {
+    onTimeUpdate() {
+      this.currentTimePreview = this.$refs.audioEl.currentTime
+      this.totalTimePreview = this.$refs.audioEl.duration
+      this.$refs.processCurrent.style.width =
+        Math.ceil((this.currentTimePreview / this.totalTimePreview) * 100) + '%'
+    },
+
+    handleTogglePlayPreview() {
+      this.isPreviewPause = !this.isPreviewPause
+      const audioEl = this.$refs.audioEl
+
+      if (audioEl.paused) {
+        audioEl.play()
+      } else {
+        audioEl.pause()
+      }
+    },
   },
-})
-
-const isPreviewPause = ref(true)
-const currentTimePreview = ref(0)
-const totalTimePreview = ref(0)
-
-const audioEl = ref(null)
-const processCurrent = ref(null)
-
-const handleTogglePlayPreview = () => {
-  isPreviewPause.value = !isPreviewPause.value
-  const audio = audioEl.value
-
-  if (!audio) return
-
-  if (audio.paused) {
-    audio.play()
-  } else {
-    audio.pause()
-  }
-}
-
-const onTimeUpdate = () => {
-  const audio = audioEl.value
-  if (!audio) return
-
-  currentTimePreview.value = audio.currentTime
-  totalTimePreview.value = audio.duration
-
-  if (processCurrent.value && totalTimePreview.value > 0) {
-    const percent = Math.ceil((currentTimePreview.value / totalTimePreview.value) * 100)
-    processCurrent.value.style.width = `${percent}%`
-  }
 }
 </script>
 
@@ -118,6 +107,8 @@ const onTimeUpdate = () => {
 
 .process-current {
   background-color: #0fcdce;
+}
+.process-current {
   position: relative;
   top: -1px;
   height: 4px;

@@ -2,7 +2,9 @@
   <div
     class="absolute w-full h-[85%] bg-white bottom-[10px] md:bottom-0 left-0 z-[1000] px-[20px] dark:bg-dark_bg_light"
   >
-    <div class="container-conversation h-[90%] my-5 overflow-y-auto overflow-x-hidden">
+    <div
+      class="container-conversation h-[90%] my-5 overflow-y-auto overflow-x-hidden"
+    >
       <div>
         <nuxt-link
           v-for="conversation in resultSearch"
@@ -11,7 +13,7 @@
           :to="{
             path: `/`,
             params: { id: conversation.id },
-            name: `id___${locale}`,
+            name: `id___${$i18n.locale}`,
           }"
           class="h-[54px] mb-3 flex items-center cursor-pointer hover:bg-slate-200 hover:bg-[rgba(255,255,255,0.1)]"
         >
@@ -19,7 +21,10 @@
             <avatar
               v-if="conversation.type === 'individual'"
               :is-have-avatar="!!conversation.partnerUser.avatar"
-              :src-image="conversation.partnerUser.avatar"
+              :src-image="
+                conversation.partnerUser.avatar &&
+                conversation.partnerUser.avatar
+              "
               :first-char="conversation.partnerUser.fullName.charAt(0)"
             />
             <avatar
@@ -36,7 +41,8 @@
           </div>
           <div class="conversation-content ml-4">
             <p
-              :class="`select-none truncate text-ellipsis max-w-[180px] md:max-w-[120px] lg:max-w-[180px] h-[1.4rem] dark:text-dark_text_strong
+              :class="`select-none truncate text-ellipsis max-w-[180px] m
+              d:max-w-[120px] lg:max-w-[180px] h-[1.4rem]  dark:text-dark_text_strong
               ${getClassNameNotSeen(conversation)}`"
             >
               {{
@@ -47,7 +53,7 @@
             </p>
             <p
               :class="`select-none truncate text-ellipsis text-[0.9rem] max-w-[180px] 
-              md:max-w-[120px] lg:max-w-[180px] h-[1.4rem] dark:text-dark_text_light
+              md:max-w-[120px] lg:max-w-[180px] h-[1.4rem]  dark:text-dark_text_light
               ${getClassNewMsgNotSeen(conversation)}`"
             >
               <span v-if="getLastMessage(conversation).type === 'text'">
@@ -67,55 +73,79 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+<script>
+import { mapGetters } from 'vuex'
 import { getConversationOfUser } from '@/api/conversation'
-import { filterByName, mergeUseIndividualConversation } from '~/helper/conversation'
+import {
+  filterByName,
+  mergeUseIndividualConversation,
+} from '~/helper/conversation'
 
-// Nếu bạn dùng Pinia thì thay bằng: import { useAccountStore } from '~/stores/account'
-const getKeySearch = useState('searchSidebarConversationKey')
-const getCurrentEmail = useState('currentUserEmail')
+export default {
+  data() {
+    return {
+      resultSearchAll: null,
+      resultSearch: null,
+    }
+  },
 
-const resultSearchAll = ref([])
-const resultSearch = ref([])
+  computed: {
+    ...mapGetters({
+      getKeySearch: 'searchSidebarConversation/getKeySearch',
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-const { locale, t } = useI18n()
+    getClassNameNotSeen() {
+      return (conversation) =>
+        conversation.seen.includes(this.getCurrentEmail) ? '' : 'font-medium'
+    },
 
-// Methods
-const getClassNameNotSeen = (conversation) =>
-  conversation.seen.includes(getCurrentEmail.value) ? '' : 'font-medium'
+    getClassNewMsgNotSeen() {
+      return (conversation) =>
+        conversation.seen.includes(this.getCurrentEmail)
+          ? 'text-gray-400'
+          : 'text-dark_primary font-medium'
+    },
 
-const getClassNewMsgNotSeen = (conversation) =>
-  conversation.seen.includes(getCurrentEmail.value)
-    ? 'text-gray-400'
-    : 'text-dark_primary font-medium'
+    getClassIsOnline() {
+      return (partnerUser) => {
+        return partnerUser.isActive ? 'bg-success' : 'bg-gray-300'
+      }
+    },
 
-const getClassIsOnline = (partnerUser) =>
-  partnerUser.isActive ? 'bg-success' : 'bg-gray-300'
+    getLastMessage() {
+      return (conversation) => {
+        return conversation.lastMessage ? conversation.lastMessage : ''
+      }
+    },
+  },
 
-const getLastMessage = (conversation) =>
-  conversation.lastMessage ? conversation.lastMessage : ''
+  watch: {
+    getKeySearch(newValue) {
+      if (this.resultSearchAll) {
+        this.resultSearch = filterByName(this.resultSearchAll, newValue)
+      }
+    },
+  },
 
-// Watch search key
-watch(getKeySearch, (newValue) => {
-  if (resultSearchAll.value) {
-    resultSearch.value = filterByName(resultSearchAll.value, newValue)
-  }
-})
+  async created() {
+    const conversationOfCurrentUser = await getConversationOfUser(
+      this.getCurrentEmail
+    )
 
-// Fetch conversation data
-onMounted(async () => {
-  const conversationOfCurrentUser = await getConversationOfUser(getCurrentEmail.value)
+    if (conversationOfCurrentUser) {
+      const individualChat = conversationOfCurrentUser.filter(
+        (conversation) => conversation.type === 'individual'
+      )
 
-  if (conversationOfCurrentUser) {
-    const individualChat = conversationOfCurrentUser.filter((c) => c.type === 'individual')
-    const groupChat = conversationOfCurrentUser.filter((c) => c.type === 'group')
+      const groupChat = conversationOfCurrentUser.filter(
+        (conversation) => conversation.type === 'group'
+      )
 
-    await mergeUseIndividualConversation(individualChat, getCurrentEmail.value)
+      await mergeUseIndividualConversation(individualChat, this.getCurrentEmail)
 
-    resultSearchAll.value = [...individualChat, ...groupChat]
-    resultSearch.value = resultSearchAll.value
-  }
-})
+      this.resultSearchAll = [...individualChat, ...groupChat]
+    }
+  },
+}
 </script>

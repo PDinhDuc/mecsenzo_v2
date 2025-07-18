@@ -55,216 +55,241 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+<script>
+import { mapGetters } from 'vuex'
 import { serverTimestamp } from '@firebase/firestore'
-import { getMessageRealtime, updateMessageVideoCall } from '~/=api/message.api'
+import stringee from '@/api/stringee'
+import { getMessageRealtime, updateMessageVideoCall } from '~/api/message.api'
 import { getConversationById, updateConversation } from '~/api/conversation'
 import { getUsersByEmails, updateUser } from '~/api/user.api'
-import stringee from '~/api/stringee'
 
-// Nuxt utilities
-const { $t, localePath } = useI18n()
-const router = useRouter()
-const route = useRoute()
-
-// Define layout and middleware
-definePageMeta({
+export default {
   layout: 'auth',
-  middleware: ['check-auth', 'auth-required'],
-})
 
-// Reactive state
-const messageVideoCall = ref(null)
-const conversationOfMessage = ref(null)
-const client = ref(null)
-const userToken = ref(null)
-const roomToken = ref(null)
-const currentVideo = ref(0)
-const containerVideo = ref(null)
-const containerMyVideo = ref(null)
-const preBtn = ref(null)
-const nextBtn = ref(null)
-const account = useState('account', () => null)
-
-// Computed properties
-const getCountVideoPartner = computed(() => {
-  return containerVideo.value?.childElementCount || 0
-})
-
-// Watchers
-watch(currentVideo, () => {
-  displayVideoPartner()
-  if (currentVideo.value === getCountVideoPartner.value - 1) {
-    if (nextBtn.value) nextBtn.value.disabled = true
-  } else if (currentVideo.value === 0) {
-    if (preBtn.value) preBtn.value.disabled = true
-  } else {
-    if (nextBtn.value) nextBtn.value.disabled = false
-    if (preBtn.value) preBtn.value.disabled = false
-  }
-})
-
-watch(
-  messageVideoCall,
-  async (newValue) => {
-    if (newValue) {
-      conversationOfMessage.value = await getConversationById(newValue.conversation)
-      roomToken.value = await stringee.getRoomToken(newValue.content.roomId)
-      await login()
-      await publishVideo()
-      displayVideoPartner()
+  data() {
+    return {
+      messageVideoCall: null,
+      conversationOfMessage: null,
+      client: null,
+      userToken: null,
+      roomToken: null,
+      currentVideo: 0,
     }
   },
-  { deep: true }
-)
 
-// Methods
-const setMessageVideoCall = (message) => {
-  messageVideoCall.value = message
-}
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-const login = async () => {
-  const userId = (Math.random() * 10000).toFixed(0)
-  userToken.value = await stringee.getUserToken(userId)
-  // eslint-disable-next-line no-undef
-  client.value = new StringeeClient()
-  client.value.connect(userToken.value)
+    getCountVideoPartner() {
+      return this.$refs.containerVideo.childElementCount
+    },
+  },
 
-  return new Promise((resolve) => {
-    client.value.on('authen', (result) => resolve(result))
-  })
-}
+  watch: {
+    currentVideo: {
+      handler() {
+        this.displayVideoPartner()
+        if (this.currentVideo === this.getCountVideoPartner - 1) {
+          this.$refs.nextBtn.disabled = true
+        } else if (this.currentVideo === 0) {
+          this.$refs.preBtn.disabled = true
+        } else {
+          this.$refs.nextBtn.disabled = false
+          this.$refs.preBtn.disabled = false
+        }
+      },
+    },
+    messageVideoCall: {
+      async handler(newValue) {
+        if (newValue) {
+          this.conversationOfMessage = await getConversationById(
+            newValue.conversation
+          )
+          this.roomToken = await stringee.getRoomToken(newValue.content.roomId)
 
-const publishVideo = async () => {
-  // eslint-disable-next-line no-undef
-  const localTrack = await StringeeVideo.createLocalVideoTrack(client.value, {
-    audio: true,
-    video: true,
-    videoDimensions: { width: 640, height: 360 },
-  })
+          await this.login()
+          await this.publishVideo()
+          this.displayVideoPartner()
+        }
+      },
+    },
+  },
 
-  const videoElement = localTrack.attach()
-  if (containerMyVideo.value) {
-    containerMyVideo.value.appendChild(videoElement)
-  }
+  created() {
+    getMessageRealtime(this.$route.params.id, this.setMessageVideoCall)
+  },
 
-  // eslint-disable-next-line no-undef
-  const roomData = await StringeeVideo.joinRoom(client.value, roomToken.value)
-  const room = roomData.room
-  room.clearAllOnMethos()
+  methods: {
+    setMessageVideoCall(message) {
+      this.messageVideoCall = message
+    },
 
-  room.on('addtrack', async (event) => {
-    const trackInfo = event.info.track
-    if (trackInfo.serverId === localTrack.serverId) return
-    await subscribeTrack(trackInfo, room, containerVideo.value)
-  })
+    login() {
+      // eslint-disable-next-line no-async-promise-executor
+      return new Promise(async (resolve) => {
+        // eslint-disable-next-line no-undef
+        const client = new StringeeClient()
+        this.client = client
 
-  room.on('removetrack', async (event) => {
-    if (!event.track) return
-    const elements = event.track.detach()
-    elements.forEach((e) => e.parentElement.remove())
-    if (conversationOfMessage.value.type === 'individual') {
-      await handleOutRoomVideoCall()
-    }
-  })
+        const userId = (Math.random() * 10000).toFixed(0)
+        const userToken = await stringee.getUserToken(userId)
 
-  const listUserPublishUnique = []
-  const listTrackInfoUnique = []
-  roomData.listTracksInfo.forEach((trackInfo) => {
-    if (!listUserPublishUnique.includes(trackInfo.userPublish)) {
-      listTrackInfoUnique.push(trackInfo)
-      listUserPublishUnique.push(trackInfo.userPublish)
-    }
-  })
+        client.connect(userToken)
 
-  roomData.listTracksInfo.forEach((trackInfo) =>
-    subscribeTrack(trackInfo, room, containerVideo.value)
-  )
+        client.on('authen', (result) => resolve(result))
+      })
+    },
 
-  room.publish(localTrack)
-}
+    async publishVideo() {
+      const containerVideo = this.$refs.containerVideo
 
-const subscribeTrack = async (trackInfo, room, container) => {
-  const track = await room.subscribe(trackInfo.serverId)
-  track.on('ready', () => {
-    const elVideo = track.attach()
-    const newContainerVideoEl = document.createElement('div')
-    newContainerVideoEl.classList.add('container-video-item')
-    newContainerVideoEl.appendChild(elVideo)
-    container.appendChild(newContainerVideoEl)
-  })
-}
+      // eslint-disable-next-line no-undef
+      const localTrack = await StringeeVideo.createLocalVideoTrack(
+        this.client,
+        {
+          audio: true,
+          video: true,
+          videoDimensions: { width: 640, height: 360 },
+        }
+      )
 
-const handleOutRoomVideoCall = async () => {
-  const userOfConversation = await getUsersByEmails(conversationOfMessage.value.member)
-  await Promise.all(
-    userOfConversation.map((user) => updateUser({ ...user, isFreeVideoCall: true }))
-  )
-
-  if (conversationOfMessage.value.type === 'individual') {
-    await updateMessageVideoCall({
-      ...messageVideoCall.value,
-      status: 'end',
-      timeEnd: serverTimestamp(),
-    })
-    goBackHomePage()
-  } else {
-    let newMessageVideoCall
-    if (messageVideoCall.value.emailJoin.length === 1) {
-      newMessageVideoCall = {
-        ...messageVideoCall.value,
-        emailJoin: messageVideoCall.value.emailJoin.filter(
-          (email) => email !== account.value
-        ),
-        timeEnd: serverTimestamp(),
-        status: 'end',
+      const videoElement = localTrack.attach()
+      if (this.$refs.containerMyVideo) {
+        this.$refs.containerMyVideo.appendChild(videoElement)
       }
-    } else {
-      newMessageVideoCall = {
-        ...messageVideoCall.value,
-        emailJoin: messageVideoCall.value.emailJoin.filter(
-          (email) => email !== account.value
-        ),
+
+      // eslint-disable-next-line no-undef
+      const roomData = await StringeeVideo.joinRoom(this.client, this.roomToken)
+      const room = roomData.room
+      room.clearAllOnMethos()
+
+      room.on('addtrack', async (event) => {
+        const trackInfo = event.info.track
+
+        if (trackInfo.serverId === localTrack.serverId) {
+          return
+        }
+
+        await this.subscribeTrack(trackInfo, room, containerVideo)
+      })
+
+      room.on('removetrack', async (event) => {
+        if (!event.track) {
+          return
+        }
+
+        const elements = event.track.detach()
+        elements.forEach((e) => e.parentElement.remove())
+
+        if (this.conversationOfMessage.type === 'individual') {
+          await this.handleOutRoomVideoCall()
+        }
+      })
+
+      const listUserPublishUnique = []
+      const listTrackInfoUnique = []
+      roomData.listTracksInfo.forEach((trackInfo) => {
+        if (!listUserPublishUnique.includes(trackInfo.userPublish)) {
+          listTrackInfoUnique.push(trackInfo)
+          listUserPublishUnique.push(trackInfo.userPublish)
+        }
+      })
+
+      roomData.listTracksInfo.forEach((trackInfo) =>
+        this.subscribeTrack(trackInfo, room, containerVideo)
+      )
+
+      room.publish(localTrack)
+    },
+
+    async subscribeTrack(trackInfo, room, containerVideo) {
+      const track = await room.subscribe(trackInfo.serverId)
+      track.on('ready', () => {
+        const elVideo = track.attach()
+
+        const newContainerVideoEl = document.createElement('div')
+        newContainerVideoEl.classList.add('container-video-item')
+        newContainerVideoEl.appendChild(elVideo)
+        containerVideo.appendChild(newContainerVideoEl)
+      })
+    },
+
+    async handleOutRoomVideoCall() {
+      const userOfConversation = await getUsersByEmails(
+        this.conversationOfMessage.member
+      )
+      userOfConversation.forEach(async (user) => {
+        await updateUser({ ...user, isFreeVideoCall: true })
+      })
+
+      if (this.conversationOfMessage.type === 'individual') {
+        await updateMessageVideoCall({
+          ...this.messageVideoCall,
+          status: 'end',
+          timeEnd: serverTimestamp(),
+        })
+
+        this.goBackHomePage()
+      } else {
+        let newMessageVideoCall
+        if (this.messageVideoCall.emailJoin.length === 1) {
+          newMessageVideoCall = {
+            ...this.messageVideoCall,
+            emailJoin: this.messageVideoCall.emailJoin.filter(
+              (email) => email !== this.getCurrentEmail
+            ),
+            timeEnd: serverTimestamp(),
+            status: 'end',
+          }
+        } else {
+          newMessageVideoCall = {
+            ...this.messageVideoCall,
+            emailJoin: this.messageVideoCall.emailJoin.filter(
+              (email) => email !== this.getCurrentEmail
+            ),
+          }
+        }
+
+        await updateMessageVideoCall(newMessageVideoCall)
+        await updateConversation({
+          ...this.conversationOfMessage,
+          lastMessage: newMessageVideoCall,
+          timeEnd: serverTimestamp(),
+          seen: [this.getCurrentEmail],
+        })
+        this.goBackHomePage()
       }
-    }
+    },
 
-    await updateMessageVideoCall(newMessageVideoCall)
-    await updateConversation({
-      ...conversationOfMessage.value,
-      lastMessage: newMessageVideoCall,
-      timeEnd: serverTimestamp(),
-      seen: [account.value],
-    })
-    goBackHomePage()
-  }
+    goBackHomePage() {
+      this.$router.push(
+        {
+          path: '/',
+          name: `index___${this.$i18n.locale}`,
+        },
+        () => window.location.reload(true)
+      )
+    },
+
+    displayVideoPartner() {
+      if (this.$refs.containerVideo) {
+        this.$refs.containerVideo.style.transform = `translateX(-${
+          this.currentVideo * 100
+        }%)`
+      }
+    },
+
+    handlePreVideo() {
+      this.currentVideo = --this.currentVideo
+    },
+
+    handleNextVideo() {
+      this.currentVideo = ++this.currentVideo
+    },
+  },
 }
-
-const goBackHomePage = () => {
-  router.push(localePath({ name: 'index' }))
-  if (process.client) {
-    window.location.reload(true)
-  }
-}
-
-const displayVideoPartner = () => {
-  if (containerVideo.value) {
-    containerVideo.value.style.transform = `translateX(-${currentVideo.value * 100}%)`
-  }
-}
-
-const handlePreVideo = () => {
-  currentVideo.value--
-}
-
-const handleNextVideo = () => {
-  currentVideo.value++
-}
-
-// Fetch message on mount
-onMounted(() => {
-  getMessageRealtime(route.params.id, setMessageVideoCall)
-})
 </script>
 
 <style scoped>

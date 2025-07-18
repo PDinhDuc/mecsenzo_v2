@@ -3,21 +3,24 @@
     <div class="h-[50px] w-full flex items-center justify-between">
       <div class="flex items-center">
         <div class="relative z-[10]">
-          <Avatar
+          <avatar
             :is-have-avatar="!!infoConversation.avatar"
             :src-image="infoConversation.avatar"
-            :first-char="infoConversation.name && infoConversation.name.charAt(0)"
+            :first-char="
+              infoConversation.name && infoConversation.name.charAt(0)
+            "
           />
           <div
             v-if="infoConversation.conversation.type === 'individual'"
-            :class="`absolute w-[12px] h-[12px] rounded-full bottom-0 right-0
+            :class="`absolute w-[12px] h-[12px] rounded-full  bottom-0 right-0
               ${infoConversation.statusPartner ? 'bg-success' : 'bg-gray-300'}`"
           ></div>
         </div>
         <div class="conversation-content ml-4">
           <p
-            :class="`select-none font-semibold truncate max-w-[80px] sm:max-w-[300px] dark:text-white
-              ${isShowSidebarConversation ? 'hidden' : ''}`"
+            :class="`select-none font-semibold truncate  max-w-[80px] sm:max-w-[300px] dark:text-white
+              ${isShowSidebarConversation ? 'hidden' : ''}
+              `"
           >
             {{ infoConversation.name }}
           </p>
@@ -25,7 +28,11 @@
             v-if="infoConversation.conversation.type === 'individual'"
             class="select-none truncate text-[0.9rem] max-w-[180px] h-[1.4rem] text-gray-500"
           >
-            {{ infoConversation.statusPartner ? $t('chatSide.active') : $t('chatSide.offline') }}
+            {{
+              infoConversation.statusPartner
+                ? $t('chatSide.active')
+                : $t('chatSide.offline')
+            }}
           </p>
         </div>
       </div>
@@ -61,53 +68,49 @@
   </div>
 </template>
 
-<script setup>
-import { computed } from 'vue'
-import { useNuxtApp } from '#app'
-import ButtonIcon from '~/components/ButtonIcon.vue'
-import Avatar from '~/components/Avatar.vue'
+<script>
+import ButtonIcon from './ButtonIcon.vue'
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
+export default {
+  components: { ButtonIcon },
 
-// Props
-const props = defineProps({
-  infoConversation: {
-    type: Object,
-    default: () => null,
+  props: {
+    infoConversation: {
+      type: Object,
+      default: () => null,
+    },
+    isShowSidebarConversation: Boolean,
   },
-  isShowSidebarConversation: {
-    type: Boolean,
-    default: false,
+
+  emits: [
+    'header-chat-side:show-add-member',
+    'header-chat-side:show-modal-conversation',
+    'header-chat-side:leave-room',
+  ],
+
+  computed: {
+    getColorBtnIcon() {
+      return this.infoConversation.conversation.colorChat
+    },
   },
-})
 
-// Emits
-const emit = defineEmits([
-  'header-chat-side:show-add-member',
-  'header-chat-side:show-modal-conversation',
-  'header-chat-side:leave-room',
-  'header-chat-side:create-video-call',
-])
+  methods: {
+    handleShowModalAddMember() {
+      this.$emit('header-chat-side:show-add-member')
+    },
 
-// Computed properties
-const getColorBtnIcon = computed(() => props.infoConversation.conversation.colorChat)
+    showModalConversation() {
+      this.$emit('header-chat-side:show-modal-conversation')
+    },
 
-// Methods
-const handleShowModalAddMember = () => {
-  emit('header-chat-side:show-add-member')
-}
+    handleShowPopupLeaveRoom() {
+      this.$emit('header-chat-side:leave-room')
+    },
 
-const showModalConversation = () => {
-  emit('header-chat-side:show-modal-conversation')
-}
-
-const handleShowPopupLeaveRoom = () => {
-  emit('header-chat-side:leave-room')
-}
-
-const handleCreateVideoCall = () => {
-  emit('header-chat-side:create-video-call')
+    handleCreateVideoCall() {
+      this.$emit('header-chat-side:create-video-call')
+    },
+  },
 }
 </script>
 

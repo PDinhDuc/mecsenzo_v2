@@ -35,7 +35,7 @@
         class="relative flex w-full justify-between items-center border-[2px] p-3 h-[86px]"
       >
         <div v-if="invitation.user" class="flex items-center">
-          <Avatar
+          <avatar
             :is-have-avatar="!!invitation.user.avatar"
             :src-image="invitation.user.avatar"
             :first-char="invitation.user.fullName.charAt(0)"
@@ -48,7 +48,7 @@
           <ButtonIcon class="group" color="#333">
             <fa icon="ellipsis-vertical" class="dark:text-dark_text_light" />
             <div
-              class="hidden absolute top-[100%] right-0 group-hover:flex flex-col w-[150px] shadow-xl z-[1000] bg-white after:content-[''] after:w-full after:absolute after:h-[30px] after:left-0 after:top-[-30px] after:bg-transparent"
+              class="hidden absolute top-[100%] right-0 group-hover:flex flex-col w-[150px] shadow-xl z-[1000] bg-white after:contents-[''] after:w-full after:absolute after:h-[30px] after:left-0 after:top-[-30px] after:bg-transparent"
             >
               <button
                 class="text-[0.9rem] py-2 px-3 border-b-[1px] hover:bg-slate-300"
@@ -98,28 +98,23 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-// import { useStore } from 'vuex'
-import { useRouter, useNuxtApp } from '#app'
-import Avatar from '~/components/Avatar.vue'
-import LoaderSideConversation from '~/components/LoaderSideConversation.vue'
-import ButtonIcon from '~/components/ButtonIcon.vue'
-import Button from '~/components/Button.vue'
-import ModalProfileFriend from '~/components/ModalProfileFriend.vue'
+<script>
+import { mapGetters } from 'vuex'
+import Avatar from './Avatar.vue'
+import LoaderSideConversation from './LoaderSideConversation.vue'
 import {
   acceptInvitation,
   deleteInvitation,
   getAcceptInvitation,
   getPendingInvitationSent,
   getPendingInvitationReceived,
-} from '~/api/friend'
+} from '~/api/friend.api'
 import {
   addNewFriend,
   getUserByEmail,
   getUsersByEmails,
   unfriend,
-} from '~/api/user'
+} from '~/api/user.api'
 import { mapInvitationUser } from '~/helper/mapInvitationUser'
 import { createNotify } from '~/api/notify'
 import { routers } from '~/constants/router'
@@ -128,134 +123,144 @@ import {
   getIndividualConversationByMember,
 } from '~/api/conversation'
 
-// Nuxt app context for i18n and router
-const { $t } = useNuxtApp()
-// const store = useStore()
-const router = useRouter()
+export default {
+  components: { Avatar, LoaderSideConversation },
 
-// Reactive state
-const filter = ref('pending')
-const friends = ref([])
-const invitationsSent = ref([])
-const invitationsReceived = ref([])
-const currentUser = ref(null)
-const profileFriend = ref(null)
-const isShowLoader = ref(true)
+  data() {
+    return {
+      filter: 'pending',
+      friends: [],
+      invitationsSent: [],
+      invitationsReceived: [],
+      currentUser: null,
+      profileFriend: null,
+      isShowLoader: true,
+    }
+  },
 
-// Computed properties
-const currentEmail = computed(() => store.getters['account/getAccount'])
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-const getInvitations = computed(() => {
-  if (filter.value === 'pending') {
-    return invitationsReceived.value
-  } else if (filter.value === 'sent') {
-    return invitationsSent.value
-  } else {
-    return friends.value
-  }
-})
+    getInvitations() {
+      if (this.filter === 'pending') {
+        return this.invitationsReceived
+      } else if (this.filter === 'sent') {
+        return this.invitationsSent
+      } else {
+        return this.friends
+      }
+    },
+  },
 
-// Lifecycle hook
-onMounted(async () => {
-  currentUser.value = await getUserByEmail(currentEmail.value)
+  async created() {
+    this.currentUser = await getUserByEmail(this.getCurrentEmail)
 
-  invitationsSent.value = await getPendingInvitationSent(currentEmail.value)
-  invitationsReceived.value = await getPendingInvitationReceived(currentEmail.value)
+    this.invitationsSent = await getPendingInvitationSent(this.getCurrentEmail)
+    this.invitationsReceived = await getPendingInvitationReceived(
+      this.getCurrentEmail
+    )
 
-  isShowLoader.value = false
+    this.isShowLoader = false
 
-  const emailReceiverInvitation = invitationsSent.value.map(
-    (invitation) => invitation.receiverEmail
-  )
-  if (emailReceiverInvitation.length > 0) {
-    const receiverInvitation = await getUsersByEmails(emailReceiverInvitation)
-    invitationsSent.value = mapInvitationUser(
-      invitationsSent.value,
-      receiverInvitation
-    ).slice()
-  }
+    const emailReceiverInvitation = this.invitationsSent.map(
+      (invitation) => invitation.receiverEmail
+    )
+    if (emailReceiverInvitation.length > 0) {
+      const receiverInvitation = await getUsersByEmails(emailReceiverInvitation)
 
-  const emailSenderInvitation = invitationsReceived.value.map(
-    (invitation) => invitation.senderEmail
-  )
-  if (emailSenderInvitation.length > 0) {
-    const senderInvitation = await getUsersByEmails(emailSenderInvitation)
-    invitationsReceived.value = mapInvitationUser(
-      invitationsReceived.value,
-      senderInvitation
-    ).slice()
-  }
+      this.invitationsSent = mapInvitationUser(
+        this.invitationsSent,
+        receiverInvitation
+      ).splice(0)
+    }
 
-  friends.value = await getAcceptInvitation(currentEmail.value)
-})
+    const emailSenderInvitation = this.invitationsReceived.map(
+      (invitation) => invitation.senderEmail
+    )
+    if (emailSenderInvitation.length > 0) {
+      const senderInvitation = await getUsersByEmails(emailSenderInvitation)
 
-// Methods
-const handleAccept = async (invitation) => {
-  const invitationUser = invitation.user
-  delete invitation.user
+      this.invitationsReceived = mapInvitationUser(
+        this.invitationsReceived,
+        senderInvitation
+      ).splice(0)
+    }
 
-  await acceptInvitation(invitation)
-  await addNewFriend(currentUser.value, invitationUser.email)
-  await addNewFriend(invitationUser, currentUser.value.email)
+    this.friends = await getAcceptInvitation(this.getCurrentEmail)
+  },
 
-  invitationsReceived.value = invitationsReceived.value.filter(
-    (item) => item.id !== invitation.id
-  )
+  methods: {
+    async handleAccept(invitation) {
+      const invitationUser = invitation.user
 
-  await createNotify(
-    invitationUser.email,
-    currentUser.value.fullName,
-    'acceptFriend',
-    routers.ADD_FRIEND_PAGE
-  )
+      delete invitation.user
 
-  await createConversation({
-    type: 'individual',
-    member: [currentEmail.value, invitationUser.email],
-    seen: [],
-    isTyping: [],
-    colorChat: '#0084ff',
-    thumb: null,
-    name: '',
-    accountHost: null,
-    lastMessage: null,
-  })
-}
+      acceptInvitation(invitation)
+      await addNewFriend(this.currentUser, invitationUser.email)
+      await addNewFriend(invitationUser, this.currentUser.email)
 
-const handleCancelInvitation = async (invitation) => {
-  await deleteInvitation(invitation.id)
-  invitationsSent.value = invitationsSent.value.filter(
-    (item) => item.id !== invitation.id
-  )
-}
+      this.invitationsReceived = this.invitationsReceived.filter(
+        (item) => item.id !== invitation.id
+      )
 
-const handleUnfriend = async (invitation) => {
-  await unfriend(currentUser.value, invitation.user.email)
-  await unfriend(invitation.user, currentUser.value.email)
-  await deleteInvitation(invitation.id)
-  friends.value = friends.value.filter((item) => item.id !== invitation.id)
-}
+      await createNotify(
+        invitationUser.email,
+        this.currentUser.fullName,
+        'acceptFriend',
+        routers.ADD_FRIEND_PAGE
+      )
 
-const handleRedirectToConversation = async (partnerUser) => {
-  const conversationsOfCurrentUser = await getIndividualConversationByMember(
-    currentUser.value.email
-  )
+      await createConversation({
+        type: 'individual',
+        member: [this.getCurrentEmail, invitationUser.email],
+        seen: [],
+        isTyping: [],
+        colorChat: '#0084ff',
+        thumb: null,
+        name: '',
+        accountHost: null,
+        lastMessage: null,
+      })
+    },
 
-  const conversation = conversationsOfCurrentUser.filter((conversation) =>
-    conversation.member.includes(partnerUser.email)
-  )[0]
+    async handleCancelInvitation(invitation) {
+      await deleteInvitation(invitation.id)
+      this.invitationsSent = this.invitationsSent.filter(
+        (item) => item.id !== invitation.id
+      )
+    },
 
-  router.push({
-    name: `id___${$t('locale')}`,
-    params: { id: conversation.id },
-  })
-}
+    async handleUnfriend(invitation) {
+      await unfriend(this.currentUser, invitation.user.email)
+      await unfriend(invitation.user, this.currentUser.email)
+      await deleteInvitation(invitation.id)
+      this.friends = this.friends.filter((item) => item.id !== invitation.id)
+    },
 
-const handleShowInfoFriend = (user) => {
-  profileFriend.value = user
-}
+    async handleRedirectToConversation(partnerUser) {
+      const conversationsOfCurrentUser =
+        await getIndividualConversationByMember(this.currentUser.email)
 
-const handleCloseModalProfile = () => {
-  profileFriend.value = null
+      const conversation = conversationsOfCurrentUser.filter((conversation) =>
+        conversation.member.includes(partnerUser.email)
+      )[0]
+
+      this.$router.push({
+        path: `/`,
+        params: { id: conversation.id },
+        name: `id___${this.$i18n.locale}`,
+      })
+    },
+
+    handleShowInfoFriend(user) {
+      this.profileFriend = user
+    },
+
+    handleCloseModalProfile() {
+      this.profileFriend = null
+    },
+  },
 }
 </script>

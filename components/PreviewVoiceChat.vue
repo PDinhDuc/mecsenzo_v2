@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isShowPreviewChatVoice"
-    class="flex flex-row justify-between border-t-[1px] mt-2 w-full relative dark:!border-dark_text_strong"
+    class="`flex flex-row justify-between border-t-[1px] mt-2 w-full relative dark:!border-dark_text_strong`"
   >
     <Recorder @change-data-audio="handleChangeDataChatVoice" />
     <button
@@ -13,23 +13,27 @@
   </div>
 </template>
 
-<script setup>
+<script>
 import Recorder from './Recorder.vue'
-import { defineProps, defineEmits } from 'vue'
+export default {
+  components: { Recorder },
 
-const props = defineProps({
-  isShowPreviewChatVoice: Boolean,
-})
+  props: {
+    isShowPreviewChatVoice: Boolean,
+  },
 
-const emit = defineEmits(['close-preview', 'set-data-chat-voice'])
+  emits: ['close-preview', 'set-data-chat-voice'],
 
-function closePreview() {
-  emit('close-preview')
-}
+  methods: {
+    closePreview() {
+      this.$emit('close-preview')
+    },
 
-function handleChangeDataChatVoice(payload) {
-  emit('set-data-chat-voice', payload)
+    handleChangeDataChatVoice(payload) {
+      this.$emit('set-data-chat-voice', payload)
+    },
+  },
 }
 </script>
 
-<style scoped></style>
+<style></style>

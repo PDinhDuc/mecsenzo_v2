@@ -1,4 +1,4 @@
-import { getUsersByEmails, getUserByEmail } from '~/api/user'
+const { getUsersByEmails, getUserByEmail } = require('~/api/user.api')
 
 const mergeUseIndividualConversation = async function (
   conversationIndividual,

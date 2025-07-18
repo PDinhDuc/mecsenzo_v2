@@ -9,7 +9,7 @@ import {
   startAfter,
 } from 'firebase/firestore'
 
-import { db } from '../firebase/config.js'
+import { db } from '~/firebase/config'
 
 const renderQuery = function (
   collectionName,

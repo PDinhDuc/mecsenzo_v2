@@ -1,34 +1,50 @@
 <template>
   <div id="container-recorder" class="h-[100px]">
     <audio-recorder :pause-recording="callback" :after-recording="callback" />
-    <AudioDisplay :url="url" :file-name="fileName" />
+    <AudioDisplay :url="url" :file-name="file_name" />
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script>
 import AudioDisplay from './AudioDisplay.vue'
+export default {
+  components: { AudioDisplay },
 
-const emit = defineEmits(['change-data-audio'])
+  emits: ['change-data-audio'],
 
-const url = ref(null)
-const index = ref(0) // Nếu bạn truyền index từ bên ngoài, dùng defineProps()
+  data() {
+    return {
+      url: null,
+    }
+  },
 
-const fileName = computed(() => {
-  const i = index.value + 1
-  const padded = i < 10 ? `00${i}` : i < 100 ? `0${i}` : `${i}`
-  return `utterance-${padded}.mp3`
-})
+  computed: {
+    file_name() {
+      let paddedNumber = ''
+      if (this.index < 10) {
+        paddedNumber = `00${this.index + 1}`
+      } else if (this.index < 100) {
+        paddedNumber = `0${this.index + 1}`
+      } else {
+        paddedNumber = `${this.index + 1}`
+      }
 
-function callback(data) {
-  if (data && data.url) {
-    emit('change-data-audio', { ...data, fileName: fileName.value })
-    url.value = data.url
-  }
+      return `utterance-${paddedNumber}.mp3`
+    },
+  },
+
+  methods: {
+    callback(data) {
+      if (data && data.url) {
+        this.$emit('change-data-audio', { ...data, fileName: this.file_name })
+        this.url = data.url
+      }
+    },
+  },
 }
 </script>
 
-<style scoped>
+<style>
 #container-recorder {
   display: flex;
   align-items: center;

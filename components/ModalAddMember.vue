@@ -24,7 +24,8 @@
               type="submit"
               name-button="Search"
               class="absolute right-0 top-0"
-            />
+            >
+            </Button>
           </div>
         </form>
         <div class="max-h-[350px] overflow-auto px-3 mt-[40px]">
@@ -34,7 +35,7 @@
             class="flex h-[50px] w-full justify-between items-center mb-[40px]"
           >
             <div class="flex items-center">
-              <Avatar
+              <avatar
                 :is-have-avatar="user && !!user.avatar"
                 :src-image="user && user.avatar"
                 :first-char="user && user.fullName.charAt(0)"
@@ -65,65 +66,63 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useStore, useNuxtApp } from '#app'
+<script>
+import { mapGetters } from 'vuex'
 import { updateConversation } from '~/api/conversation'
 import { getAllFriendOfUser } from '~/api/user.api'
 import { isRightSearch } from '~/helper/conversation'
-import Avatar from '~/components/Avatar.vue'
-import Button from '~/components/Button.vue'
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-const store = useStore()
-
-// Props
-const props = defineProps({
-  conversation: {
-    type: Object,
-    default: () => ({}),
+export default {
+  props: {
+    conversation: {
+      type: Object,
+      default: () => {},
+    },
   },
-})
 
-// Emits
-const emit = defineEmits(['closeModal'])
+  data() {
+    return {
+      inputSearchKey: '',
+      usersSearch: null,
+      friendOfCurrentUser: null,
+    }
+  },
 
-// Reactive state
-const inputSearchKey = ref('')
-const usersSearch = ref(null)
-const friendOfCurrentUser = ref(null)
-const inputSearchName = ref(null)
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-// Computed properties
-const currentEmail = computed(() => store.getters['account/getAccount'])
+    checkIsInRoom() {
+      return (email) => {
+        return this.conversation.member.includes(email)
+      }
+    },
+  },
 
-const checkIsInRoom = (email) => {
-  return props.conversation.member.includes(email)
-}
+  async created() {
+    this.friendOfCurrentUser = await getAllFriendOfUser(this.getCurrentEmail)
+  },
 
-// Lifecycle hook
-onMounted(async () => {
-  friendOfCurrentUser.value = await getAllFriendOfUser(currentEmail.value)
-})
+  methods: {
+    closeModal() {
+      this.$emit('closeModal')
+    },
 
-// Methods
-const closeModal = () => {
-  emit('closeModal')
-}
+    handleSearchUser() {
+      this.usersSearch = this.friendOfCurrentUser.filter(
+        (user) =>
+          isRightSearch(user.fullName, this.inputSearchKey) ||
+          isRightSearch(user.email, this.inputSearchKey)
+      )
+    },
 
-const handleSearchUser = () => {
-  usersSearch.value = friendOfCurrentUser.value.filter(
-    (user) =>
-      isRightSearch(user.fullName, inputSearchKey.value) ||
-      isRightSearch(user.email, inputSearchKey.value)
-  )
-}
-
-const handleAddMember = (emailNewMember) => {
-  updateConversation({
-    ...props.conversation,
-    member: [...props.conversation.member, emailNewMember],
-  })
+    handleAddMember(emailNewMember) {
+      updateConversation({
+        ...this.conversation,
+        member: [...this.conversation.member, emailNewMember],
+      })
+    },
+  },
 }
 </script>

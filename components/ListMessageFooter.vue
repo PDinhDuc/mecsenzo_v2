@@ -8,15 +8,18 @@
   </div>
 </template>
 
-<script setup>
-import ShowTyping from '~/components/ShowTyping.vue'
-import ShowSeenMessage from '~/components/ShowSeenMessage.vue'
-
-// Props
-const props = defineProps({
-  footerListMessageData: {
-    type: Object,
-    default: () => ({}),
+<script>
+import ShowTyping from './ShowTyping.vue'
+import ShowSeenMessage from './ShowSeenMessage.vue'
+export default {
+  components: { ShowTyping, ShowSeenMessage },
+  props: {
+    footerListMessageData: {
+      type: Object,
+      default: () => {},
+    },
   },
-})
+}
 </script>
+
+<style></style>

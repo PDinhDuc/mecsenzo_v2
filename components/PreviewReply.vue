@@ -1,8 +1,9 @@
 <template>
   <div
     v-if="replyMessage"
-    :class="`flex justify-between border-t-[1px] border-black mt-2 dark:text-dark_text_strong dark:border-dark_text_strong
-      ${replyMessage.type === 'image' ? 'h-[100px] mb-2' : 'h-[50px]'}`"
+    :class="`flex justify-between  border-t-[1px] border-black mt-2  dark:text-dark_text_strong dark:border-dark_text_strong
+      ${replyMessage.type === 'image' ? 'h-[100px] mb-2' : 'h-[50px]'}
+      `"
   >
     <div class="w-[50%]">
       <p class="text-[0.9rem] truncate max-w-[200px] md:max-w-[300px]">
@@ -40,25 +41,23 @@
   </div>
 </template>
 
-<script setup>
-import { useNuxtApp } from '#app'
-
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-
-// Props
-const props = defineProps({
-  replyMessage: {
-    type: Object,
-    default: () => null,
+<script>
+export default {
+  props: {
+    replyMessage: {
+      type: Object,
+      default: () => null,
+    },
   },
-})
 
-// Emits
-const emit = defineEmits(['clear-reply-message'])
+  emits: ['clear-reply-message'],
 
-// Methods
-const clearReplyMessage = () => {
-  emit('clear-reply-message')
+  methods: {
+    clearReplyMessage() {
+      this.$emit('clear-reply-message')
+    },
+  },
 }
 </script>
+
+<style></style>

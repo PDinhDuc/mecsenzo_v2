@@ -2,12 +2,16 @@
   <ChatSide />
 </template>
 
-<script setup>
-import ChatSide from '~/components/ChatSide.vue'
+<script>
+import ChatSide from '../../components/ChatSide.vue'
 
-// Define layout and middleware
-definePageMeta({
+export default {
+  name: 'ChatPage',
+  components: {
+    ChatSide,
+  },
   layout: 'chat',
+
   middleware: ['check-auth', 'auth-required'],
-})
+}
 </script>

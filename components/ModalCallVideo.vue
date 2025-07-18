@@ -57,35 +57,33 @@
   </div>
 </template>
 
-<script setup>
-import { useNuxtApp } from '#app'
-import Avatar from '~/components/Avatar.vue'
+<script>
+import Avatar from './Avatar.vue'
+export default {
+  components: { Avatar },
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-
-// Props
-const props = defineProps({
-  infoVideoCall: {
-    type: Object,
-    default: () => null,
+  props: {
+    infoVideoCall: {
+      type: Object,
+      default: () => null,
+    },
+    currentMessageVideoCall: {
+      type: Object,
+      default: () => null,
+    },
   },
-  currentMessageVideoCall: {
-    type: Object,
-    default: () => null,
+
+  emits: ['cancel-video-call', 'close-video-call'],
+
+  methods: {
+    handleCancelVideoCall() {
+      this.handleCloseModalVideoCall()
+      this.$emit('cancel-video-call')
+    },
+
+    handleCloseModalVideoCall() {
+      this.$emit('close-video-call')
+    },
   },
-})
-
-// Emits
-const emit = defineEmits(['cancel-video-call', 'close-video-call'])
-
-// Methods
-const handleCancelVideoCall = () => {
-  handleCloseModalVideoCall()
-  emit('cancel-video-call')
-}
-
-const handleCloseModalVideoCall = () => {
-  emit('close-video-call')
 }
 </script>

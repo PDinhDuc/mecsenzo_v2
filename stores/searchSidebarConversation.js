@@ -13,6 +13,6 @@ export const useSearchSidebarConversationStore = defineStore('searchSidebarConve
   },
 
   getters: {
-    getKeySearch: (state)=> state.user
+    getKeySearch: (state)=> state.keySearch
   }
 })

@@ -13,7 +13,6 @@
         <fa icon="magnifying-glass" />
       </Button>
     </div>
-
     <div class="max-h-[350px] overflow-auto px-3 mt-[40px]">
       <div
         v-for="user in usersSearch"
@@ -21,13 +20,13 @@
         class="flex h-[50px] w-full justify-between items-center mb-[40px]"
       >
         <div class="flex items-center">
-          <Avatar
-            :is-have-avatar="!!user.avatar"
-            :src-image="user.avatar"
-            :first-char="user.fullName.charAt(0)"
+          <avatar
+            :is-have-avatar="user && !!user.avatar"
+            :src-image="user && user.avatar"
+            :first-char="user && user.fullName.charAt(0)"
           />
           <p class="select-none text-[1.2rem] font-medium ml-3 dark:text-white">
-            {{ user.fullName }}
+            {{ user && user.fullName }}
           </p>
         </div>
         <div>
@@ -64,17 +63,15 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+<script>
+import { mapGetters } from 'vuex'
 import Button from './Button.vue'
 import Avatar from './Avatar.vue'
-
 import {
   getUserByEmail,
   getUserByEmailAndFullname,
   addNewFriend,
-} from '~/api/user'
+} from '~/api/user.api'
 import {
   getPendingInvitationSent,
   getPendingInvitationReceived,
@@ -83,98 +80,145 @@ import {
   createInvitation,
   getInvitationById,
   acceptInvitation,
-} from '~/api/friend'
+} from '~/api/friend.api'
 import { createNotify } from '~/api/notify'
 import { routers } from '~/constants/router'
 import { createConversation } from '~/api/conversation'
 
-// Nếu bạn dùng Pinia thì thay thế dòng sau bằng `useAccountStore()` hoặc `useState`
-const getCurrentEmail = useState('currentUserEmail')
+export default {
+  components: { Button, Avatar },
+  data() {
+    return {
+      searchKey: '',
+      usersSearch: [],
+      pendingInvitationSent: [],
+      pendingInvitationReceived: [],
+      friendOfCurrentUser: [],
+    }
+  },
 
-const { t } = useI18n()
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-const searchKey = ref('')
-const usersSearch = ref([])
-const pendingInvitationSent = ref([])
-const pendingInvitationReceived = ref([])
-const friendOfCurrentUser = ref([])
+    isPendingInvitationSent() {
+      return (user) => {
+        const emailReceived = this.pendingInvitationSent.map(
+          (invitation) => invitation.receiverEmail
+        )
 
-function isPendingInvitationSent(user) {
-  return pendingInvitationSent.value.some((i) => i.receiverEmail === user.email)
-}
+        return emailReceived.includes(user.email)
+      }
+    },
 
-function isPendingInvitationReceived(user) {
-  return pendingInvitationReceived.value.some((i) => i.senderEmail === user.email)
-}
+    isPendingInvitationReceived() {
+      return (user) => {
+        const emailSent = this.pendingInvitationReceived.map(
+          (invitation) => invitation.senderEmail
+        )
 
-function isFriend(user) {
-  return friendOfCurrentUser.value.includes(user.email)
-}
+        return emailSent.includes(user.email)
+      }
+    },
 
-async function handleSearch() {
-  const result = await getUserByEmailAndFullname(searchKey.value)
-  usersSearch.value = result.filter((user) => user.email !== getCurrentEmail.value)
+    isFriend() {
+      return (user) => {
+        return this.friendOfCurrentUser.includes(user.email)
+      }
+    },
+  },
 
-  pendingInvitationSent.value = await getPendingInvitationSent(getCurrentEmail.value)
-  pendingInvitationReceived.value = await getPendingInvitationReceived(getCurrentEmail.value)
+  methods: {
+    async handleSearch() {
+      const resultSearch = await getUserByEmailAndFullname(this.searchKey)
+      this.usersSearch = resultSearch.filter(
+        (user) => user.email !== this.getCurrentEmail
+      )
 
-  const currentUser = await getUserByEmail(getCurrentEmail.value)
-  friendOfCurrentUser.value = currentUser.friend || []
-}
+      const pendingInvitationSent = await getPendingInvitationSent(
+        this.getCurrentEmail
+      )
+      this.pendingInvitationSent = pendingInvitationSent
 
-async function handleCancelInvitation(receiver) {
-  const invitation = await getPendingInvitationBySenderReceiver(getCurrentEmail.value, receiver)
-  await deleteInvitation(invitation.id)
-  pendingInvitationSent.value = pendingInvitationSent.value.filter(
-    (invite) => invite.id !== invitation.id
-  )
-}
+      const pendingInvitationReceived = await getPendingInvitationReceived(
+        this.getCurrentEmail
+      )
+      this.pendingInvitationReceived = pendingInvitationReceived
 
-async function handleAcceptInvitation(sender) {
-  const invitation = await getPendingInvitationBySenderReceiver(sender, getCurrentEmail.value)
-  await acceptInvitation(invitation)
+      const currentUser = await getUserByEmail(this.getCurrentEmail)
+      this.friendOfCurrentUser = currentUser.friend ? currentUser.friend : []
+    },
 
-  const currentUser = await getUserByEmail(getCurrentEmail.value)
-  const senderUser = await getUserByEmail(sender)
+    async handleCancelInvitation(receiver) {
+      const invitation = await getPendingInvitationBySenderReceiver(
+        this.getCurrentEmail,
+        receiver
+      )
 
-  await addNewFriend(currentUser, sender)
-  await addNewFriend(senderUser, currentUser.email)
+      await deleteInvitation(invitation.id)
 
-  friendOfCurrentUser.value.push(sender)
+      this.pendingInvitationSent = this.pendingInvitationSent.filter(
+        (invite) => invite.id !== invitation.id
+      )
+    },
 
-  await createNotify(
-    sender,
-    currentUser.fullName,
-    'acceptFriend',
-    routers.ADD_FRIEND_PAGE
-  )
+    async handleAcceptInvitation(sender) {
+      const invitation = await getPendingInvitationBySenderReceiver(
+        sender,
+        this.getCurrentEmail
+      )
 
-  await createConversation({
-    type: 'individual',
-    member: [getCurrentEmail.value, sender],
-    seen: [],
-    isTyping: [],
-    colorChat: '#0084ff',
-    messages: [],
-    thumb: null,
-    name: '',
-    accountHost: null,
-    lastMessage: null,
-  })
-}
+      acceptInvitation(invitation)
 
-async function handleSendInvitation(receiver) {
-  const newInvitation = await createInvitation(getCurrentEmail.value, receiver)
-  const fullInvitation = await getInvitationById(newInvitation.id)
-  pendingInvitationSent.value.push(fullInvitation)
+      const currentUser = await getUserByEmail(this.getCurrentEmail)
+      const senderUser = await getUserByEmail(sender)
+      await addNewFriend(currentUser, sender)
+      await addNewFriend(senderUser, currentUser.email)
 
-  const currentUser = await getUserByEmail(getCurrentEmail.value)
+      this.$set(
+        this.friendOfCurrentUser,
+        this.friendOfCurrentUser.length,
+        sender
+      )
 
-  await createNotify(
-    receiver,
-    currentUser.fullName,
-    'inviteFriend',
-    routers.ADD_FRIEND_PAGE
-  )
+      await createNotify(
+        sender,
+        currentUser.fullName,
+        'acceptFriend',
+        routers.ADD_FRIEND_PAGE
+      )
+
+      await createConversation({
+        type: 'individual',
+        member: [this.getCurrentEmail, sender],
+        seen: [],
+        isTyping: [],
+        colorChat: '#0084ff',
+        messages: [],
+        thumb: null,
+        name: '',
+        accountHost: null,
+        lastMessage: null,
+      })
+    },
+
+    async handleSendInvitation(receiver) {
+      const newInvitation = await createInvitation(
+        this.getCurrentEmail,
+        receiver
+      )
+      this.pendingInvitationSent.push(await getInvitationById(newInvitation.id))
+
+      const currentUser = await getUserByEmail(this.getCurrentEmail)
+
+      await createNotify(
+        receiver,
+        currentUser.fullName,
+        'inviteFriend',
+        routers.ADD_FRIEND_PAGE
+      )
+    },
+  },
 }
 </script>

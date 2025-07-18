@@ -9,163 +9,162 @@
           {{ $t('profileModal.heading') }}
         </h3>
       </div>
-      <Form v-slot="{ handleSubmit }" as="form" @submit="handleSubmit(handleEditProfile)">
-        <div>
-          <FormField
-            name="fullName"
-            :label-field="$t('profileModal.fullname')"
-            :value-field="user && user.fullName"
-            :rules="{ required: true, max: 30 }"
-            @onChangeField="handleChangeFiled"
-          />
-          <FormField
-            name="age"
-            :label-field="$t('profileModal.age')"
-            type-input="number"
-            :value-field="user && user.age"
-            @onChangeField="handleChangeFiled"
-          />
-          <FormField
-            name="address"
-            :label-field="$t('profileModal.address')"
-            :value-field="user && user.address"
-            @onChangeField="handleChangeFiled"
-          />
-          <FormField
-            :label-field="$t('profileModal.avatar')"
-            type-input="file"
-            :value-field="avatar"
-            @onChangeFile="handleChangeAvatar"
-          />
-        </div>
-        <div class="flex items-center justify-center">
-          <Avatar
-            :is-have-avatar="!!avatar"
-            :src-image="avatar"
-            :first-char="user && user.fullName.charAt(0)"
-            size="large"
-          />
-        </div>
-        <div class="w-full">
-          <div
-            class="mt-8 mx-auto w-full sm:w-[80%] flex justify-between items-end h-[50px]"
-          >
-            <Button
-              color="#ff7200"
-              size="large"
-              type="submit"
-              :name-button="$t('profileModal.edit')"
+      <ValidationObserver v-slot="{ handleSubmit }">
+        <form @submit.prevent="handleSubmit(handleEditProfile)">
+          <div>
+            <FormField
+              name="fullName"
+              :label-field="$t('profileModal.fullname')"
+              :value-field="user && user.fullName"
+              rule="required|maximumLen:30"
+              @onChangeField="handleChangeFiled"
             />
-            <Button
-              color="#ff7200"
-              variant="outline"
-              size="large"
-              :handle-click="closeModal"
-            >
-              {{ $t('profileModal.close') }}
-            </Button>
+
+            <FormField
+              name="age"
+              :label-field="$t('profileModal.age')"
+              type-input="number"
+              :value-field="user && user.age"
+              @onChangeField="handleChangeFiled"
+            />
+            <FormField
+              name="address"
+              :label-field="$t('profileModal.address')"
+              :value-field="user && user.address"
+              @onChangeField="handleChangeFiled"
+            />
+            <FormField
+              :label-field="$t('profileModal.avatar')"
+              type-input="file"
+              :value-field="avatar"
+              @onChangeFile="handleChangeAvatar"
+            />
           </div>
-        </div>
-      </Form>
+          <div class="flex items-center justify-center">
+            <Avatar
+              :is-have-avatar="!!avatar"
+              :src-image="avatar"
+              :first-char="user && user.fullName.charAt(0)"
+              size="large"
+            />
+          </div>
+          <div class="w-full">
+            <div
+              class="mt-8 mx-auto w-full sm:w-[80%] flex justify-between items-end h-[50px]"
+            >
+              <Button
+                color="#ff7200"
+                size="large"
+                :handle-click="handleEditProfile"
+                type="submit"
+                :name-button="$t('profileModal.edit')"
+              ></Button>
+              <Button
+                color="#ff7200"
+                variant="outline"
+                size="large"
+                :handle-click="closeModal"
+                >{{ $t('profileModal.close') }}</Button
+              >
+            </div>
+          </div>
+        </form>
+      </ValidationObserver>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { Form } from 'vee-validate'
-import FormField from '~/components/FormField.vue'
-import Avatar from '~/components/Avatar.vue'
-import Button from '~/components/Button.vue'
+<script>
+import { mapGetters } from 'vuex'
+import FormField from './FormField.vue'
+import Avatar from './Avatar.vue'
+import Button from './Button.vue'
 import { uploadImage } from '~/helper/FirebaseHelper'
-import { getUserByEmail, setAvatarUser, updateUser } from '~/api/user'
-import { useAccountStore } from '~/stores/account'
+import { getUserByEmail, setAvatarUser, updateUser } from '~/api/user.api'
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-const accountStore = useAccountStore()
+export default {
+  components: { FormField, Avatar, Button },
 
-// Props
-const props = defineProps({
-  isShow: {
-    type: Boolean,
-    default: false,
+  props: {
+    isShow: Boolean,
   },
-})
 
-// Emits
-const emit = defineEmits([
-  'closeModal',
-  'update:user',
-  'set-percent-upload',
-  'clear-percent-upload',
-])
+  emits: [
+    'closeModal',
+    'update:user',
+    'set-percent-upload',
+    'clear-percent-upload',
+  ],
 
-// Reactive state
-const user = ref(null)
-const avatar = ref(null)
-const fileAvatar = ref(null)
+  data() {
+    return {
+      user: null,
+      avatar: null,
+      fileAvatar: null,
+    }
+  },
 
-// Computed properties
-const currentEmail = computed(() => accountStore.getAccount)
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
+  },
 
-// Lifecycle hook
-onMounted(async () => {
-  user.value = await getUserByEmail(currentEmail.value)
-  avatar.value = user.value && user.value.avatar
-})
+  async created() {
+    this.user = await getUserByEmail(this.getCurrentEmail)
+    this.avatar = this.user && this.user.avatar
+  },
 
-// Methods
-const handleChangeFiled = (newValue) => {
-  const [fieldChange, value] = newValue
-  user.value[fieldChange] = value
-}
+  methods: {
+    handleChangeFiled(newValue) {
+      const fieldChange = newValue[0]
+      this.user[fieldChange] = newValue[1]
+    },
+    closeModal() {
+      this.$emit('closeModal')
+    },
+    handleChangeAvatar(fileImage) {
+      this.avatar = fileImage.preview
+      this.fileAvatar = fileImage
+    },
+    updateInfoUser() {
+      updateUser(this.user)
+      localStorage.setItem('user', JSON.stringify(this.user))
+    },
 
-const closeModal = () => {
-  emit('closeModal')
-}
+    async handleImageUpdateComplete(urlAvatar) {
+      this.updateInfoUser()
+      await setAvatarUser(urlAvatar)
+      this.closeModal()
+      this.clearPercentUploadAvatar()
+    },
 
-const handleChangeAvatar = (fileImage) => {
-  avatar.value = fileImage.preview
-  fileAvatar.value = fileImage
-}
+    handleEditProfile() {
+      if (this.fileAvatar) {
+        uploadImage(
+          `user-avatar`,
+          this.fileAvatar,
+          this.handleImageUpdateComplete,
+          this.setPercentUploadAvatar
+        )
+        this.$emit('update:user', {
+          newUser: this.user,
+          urlAvatarTemp: this.avatar,
+        })
+      } else {
+        this.updateInfoUser()
+        this.closeModal()
+        this.$emit('update:user')
+      }
+    },
 
-const updateInfoUser = () => {
-  updateUser(user.value)
-  localStorage.setItem('user', JSON.stringify(user.value))
-}
+    setPercentUploadAvatar(percent) {
+      this.$emit('set-percent-upload', percent)
+    },
 
-const handleImageUpdateComplete = async (urlAvatar) => {
-  updateInfoUser()
-  await setAvatarUser(urlAvatar)
-  closeModal()
-  clearPercentUploadAvatar()
-}
-
-const handleEditProfile = () => {
-  if (fileAvatar.value) {
-    uploadImage(
-      `user-avatar`,
-      fileAvatar.value,
-      handleImageUpdateComplete,
-      setPercentUploadAvatar
-    )
-    emit('update:user', {
-      newUser: user.value,
-      urlAvatarTemp: avatar.value,
-    })
-  } else {
-    updateInfoUser()
-    closeModal()
-    emit('update:user')
-  }
-}
-
-const setPercentUploadAvatar = (percent) => {
-  emit('set-percent-upload', percent)
-}
-
-const clearPercentUploadAvatar = () => {
-  emit('clear-percent-upload')
+    clearPercentUploadAvatar() {
+      this.$emit('clear-percent-upload')
+    },
+  },
 }
 </script>

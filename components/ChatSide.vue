@@ -2,15 +2,16 @@
   <div
     :class="`flex-1 flex flex-col ml-0 md:ml-4 bg-white shadow-2xl rounded-[20px]  
     p-[36px] sm:pl-[100px]  md:pl-[36px] overflow-x-hidden dark:bg-dark_bg_light
-    ${showSidebarConversation ? 'pl-[100px]' : 'pl-[36px]'}`"
+    ${getShowSidebarConversation ? 'pl-[100px]' : 'pl-[36px]'}
+    `"
   >
-    <div v-if="isShowLoader" class="h-[50px]">
+    <div v-if="getIsShowLoader" class="h-[50px]">
       <LoaderUser />
     </div>
     <HeaderChatSide
       v-if="conversationRealtime"
-      :info-conversation="headerChatSideData"
-      :is-show-sidebar-conversation="showSidebarConversation"
+      :info-conversation="getHeaderChatSideData"
+      :is-show-sidebar-conversation="getShowSidebarConversation"
       @header-chat-side:show-add-member="handleShowModalAddMember"
       @header-chat-side:show-modal-conversation="showModalConversation"
       @header-chat-side:leave-room="handleShowPopupLeaveRoom"
@@ -18,7 +19,7 @@
     />
     <Separation />
     <ListMessage
-      :list-message-data="listMessageData"
+      :list-message-data="getListMessageData"
       @list-msg:load-more-message="handleLoadMoreMessage"
       @list-msg:set-reply="handleSetReplyMessage"
       @list-msg:show-image-detail="handleShowImageDetail"
@@ -39,7 +40,9 @@
       @set-data-chat-voice="handleSetDataChatVoice"
     />
     <ChatSideFooter
-      :color-btn="conversationRealtime ? conversationRealtime.colorChat : '#0084ff'"
+      :color-btn="
+        conversationRealtime ? conversationRealtime.colorChat : '#0084ff'
+      "
       :is-disable-input-message="isDisableInputMessage"
       @set-file-image-input="handleSetFileImageInput"
       @show-preview-chat-voice="handleShowPreviewChatVoice"
@@ -55,19 +58,31 @@
       justify-center items-center bg-white rounded-full 
       text-dark_primary shadow-xl hover:bg-dark_primary hover:text-white
       transition-all
-      ${showSidebarConversation ? 'translate-x-[70px]' : 'translate-x-[-20px]'}`"
+      ${
+        getShowSidebarConversation
+          ? 'translate-x-[70px]'
+          : 'translate-x-[-20px]'
+      }`"
       @click="handleToggleSidebarMobile"
     >
-      <fa v-if="!showSidebarConversation" icon="angles-right" class="ml-3" />
+      <fa v-if="!getShowSidebarConversation" icon="angles-right" class="ml-3" />
       <fa v-else icon="angles-left" class="ml-3" />
     </div>
     <ModalAddMember
-      v-if="conversationRealtime && conversationRealtime.type === 'group' && isShowModalAddMember"
+      v-if="
+        conversationRealtime &&
+        conversationRealtime.type === 'group' &&
+        isShowModalAddMember
+      "
       :conversation="conversationRealtime"
       @closeModal="handleCloseModalAddMember"
     />
     <PopupConfirm
-      v-if="conversationRealtime && conversationRealtime.type === 'group' && isShowPopupLeaveRoom"
+      v-if="
+        conversationRealtime &&
+        conversationRealtime.type === 'group' &&
+        isShowPopupLeaveRoom
+      "
       :content="$t('popupConfirm.leaveRoomContent')"
       :name-btn-action="$t('popupConfirm.leaveRoom')"
       @close-popup="handleClosePopupLeaveRoom"
@@ -88,467 +103,602 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-// import { useStore } from 'vuex'
-import { useRoute, useRouter } from 'vue-router'
+<script>
+import { mapGetters } from 'vuex'
 import { serverTimestamp } from '@firebase/firestore'
-import Separation from '~/components/Separation.vue'
-import ListMessage from '~/components/ListMessage.vue'
-import HeaderChatSide from '~/components/HeaderChatSide.vue'
-import PreviewReply from '~/components/PreviewReply.vue'
-import PreviewImageInput from '~/components/PreviewImageInput.vue'
-import ModalCallVideo from '~/components/ModalCallVideo.vue'
-import LoaderUser from '~/components/LoaderUser.vue'
-import PreviewVoiceChat from '~/components/PreviewVoiceChat.vue'
-import ChatSideFooter from '~/components/ChatSideFooter.vue'
-import { saveMessage, getMessageByConversation, saveMessageVideoCall, updateMessageVideoCall, getMessageRealtime } from '~/api/message.api'
-import { getConversationByIdRealTime, getConversationById, updateConversation } from '~/api/conversation'
+import Separation from './Separation.vue'
+import ListMessage from './ListMessage.vue'
+import HeaderChatSide from './HeaderChatSide.vue'
+import PreviewReply from './PreviewReply.vue'
+import PreviewImageInput from './PreviewImageInput.vue'
+import ModalCallVideo from './ModalCallVideo.vue'
+import LoaderUser from './LoaderUser.vue'
+import PreviewVoiceChat from './PreviewVoiceChat.vue'
+import ChatSideFooter from './ChatSideFooter.vue'
+
+import {
+  saveMessage,
+  getMessageByConversation,
+  saveMessageVideoCall,
+  updateMessageVideoCall,
+  getMessageRealtime,
+} from '~/api/message.api'
+import {
+  getConversationByIdRealTime,
+  getConversationById,
+  updateConversation,
+} from '~/api/conversation'
 import { createTempUrlForImageFile } from '~/helper/FileHelper'
 import { uploadByBlobUrl, uploadImage } from '~/helper/FirebaseHelper'
 import { getUserByEmail, getUsersByEmails, updateUser } from '~/api/user.api'
 import { constant } from '~/constants/constant'
-import stringee from '~/api/stringee'
+import stringee from '@/api/stringee'
 
-// const store = useStore()
-const route = useRoute()
-const router = useRouter()
+export default {
+  components: {
+    Separation,
+    ListMessage,
+    HeaderChatSide,
+    PreviewReply,
+    PreviewImageInput,
+    ModalCallVideo,
+    LoaderUser,
+    PreviewVoiceChat,
+    ChatSideFooter,
+  },
 
-// Reactive state
-const currentConversation = ref(null)
-const listMessage = ref(null)
-const lastDocMessage = ref(null)
-const unsubscribeSnapMessage = ref(null)
-const unsubscribeLoadMoreMsg = ref(null)
-const inputMessage = ref('')
-const replyMessage = ref(null)
-const conversationRealtime = ref(null)
-const unsubscribeGetConversationRealtime = ref(null)
-const isShowModalAddMember = ref(false)
-const isShowPopupLeaveRoom = ref(false)
-const fileImageInput = ref(null)
-const percentUploadImage = ref(null)
-const srcImageShow = ref(null)
-const isShowPreviewChatVoice = ref(false)
-const dataChatVoice = ref(null)
-const isDisableInputMessage = ref(false)
-const currentMessageVideoCall = ref(null)
-const isShowModalCallVideo = ref(false)
-const infoVideoCall = ref(null)
-const unsubscribeCurrentMessageVideoCall = ref(null)
-const flagAutoCancelVideoCall = ref(true)
-
-// Computed properties
-const currentMembers = computed(() => store.getters['conversation/getCurrentMembers'])
-const showSidebarConversation = computed(() => store.getters['sidebarConversation/getIsShow'])
-const currentEmail = computed(() => store.getters['account/getAccount'])
-
-const partnerUser = computed(() => {
-  return currentMembers.value.filter(user => user.email !== currentEmail.value)[0]
-})
-
-const currentUser = computed(() => {
-  return currentMembers.value.filter(user => user.email === currentEmail.value)[0]
-})
-
-const conversationInfo = computed(() => {
-  if (conversationRealtime.value) {
-    if (conversationRealtime.value.type === 'group') {
-      return {
-        name: conversationRealtime.value.name,
-        avatar: conversationRealtime.value.thumb,
-      }
+  data() {
+    return {
+      currentConversation: null,
+      listMessage: null,
+      lastDocMessage: null,
+      unsubscribeSnapMessage: null,
+      unsubscribeLoadMoreMsg: null,
+      inputMessage: '',
+      replyMessage: null,
+      conversationRealtime: null,
+      unsubscribeGetConversationRealtime: null,
+      isShowModalAddMember: false,
+      isShowPopupLeaveRoom: false,
+      fileImageInput: null,
+      percentUploadImage: null,
+      srcImageShow: null,
+      isShowPreviewChatVoice: false,
+      dataChatVoice: null,
+      isDisableInputMessage: false,
+      currentMessageVideoCall: null,
+      isShowModalCallVideo: false,
+      infoVideoCall: null,
+      unsubscribeCurrentMessageVideoCall: null,
+      flagAutoCancelVideoCall: true,
     }
-    return partnerUser.value
-      ? { name: partnerUser.value.fullName, avatar: partnerUser.value.avatar }
-      : { name: '', avatar: null }
-  }
-  return { name: '', avatar: null }
-})
+  },
 
-const statusPartner = computed(() => partnerUser.value?.isActive || false)
-
-const usersSeen = computed(() => {
-  if (
-    conversationRealtime.value &&
-    conversationRealtime.value.lastMessage &&
-    conversationRealtime.value.lastMessage.user.email === currentEmail.value
-  ) {
-    return currentMembers.value.filter(
-      member => member.email !== currentEmail.value && conversationRealtime.value.seen.includes(member.email)
-    )
-  }
-  return []
-})
-
-const usersTyping = computed(() => {
-  if (conversationRealtime.value && conversationRealtime.value.isTyping) {
-    const emailTyping = conversationRealtime.value.isTyping.filter(email => email !== currentEmail.value)
-    return currentMembers.value.filter(user => emailTyping.includes(user.email) && user.isActive)
-  }
-  return []
-})
-
-const listMessageFooterData = computed(() => {
-  return {
-    userTyping: usersTyping.value,
-    usersSeen: usersSeen.value,
-  }
-})
-
-const listMessageData = computed(() => ({
-  footerData: listMessageFooterData.value,
-  listMessage: listMessage.value,
-  conversation: conversationRealtime.value,
-}))
-
-const headerChatSideData = computed(() => ({
-  avatar: conversationInfo.value.avatar,
-  name: conversationInfo.value.name,
-  conversation: conversationRealtime.value,
-  statusPartner: statusPartner.value,
-}))
-
-const isShowLoader = computed(() => !conversationRealtime.value)
-
-const titlePage = computed(() => {
-  if (conversationRealtime.value) {
-    return conversationRealtime.value.type === 'individual'
-      ? conversationRealtime.value.partnerUser.fullName
-      : conversationRealtime.value.name
-  }
-  return 'Mecsenzo'
-})
-
-// Watchers
-watch(currentConversation, async (newValue) => {
-  if (newValue) {
-    unsubscribeSnapMessage.value = getMessageByConversation(
-      newValue.id,
-      setListMessage,
-      lastDocMessage.value
-    )
-    unsubscribeGetConversationRealtime.value = getConversationByIdRealTime(
-      newValue.id,
-      setConversationRealtime
-    )
-  }
-})
-
-watch(currentMessageVideoCall, async (newValue) => {
-  if (newValue.status === 'accept') {
-    flagAutoCancelVideoCall.value = false
-    router.push({
-      name: `video-chat-id___${$i18n.locale}`,
-      params: { id: currentMessageVideoCall.value.id },
-    })
-  } else if (newValue.status === 'cancel') {
-    isShowModalCallVideo.value = false
-    await updateUser({ ...currentUser.value, isFreeVideoCall: true })
-  }
-})
-
-// Methods
-const updateInputMessage = (value) => {
-  inputMessage.value = value
-}
-
-const handleSelectEmoji = (emoji) => {
-  inputMessage.value += emoji.data
-}
-
-const handleToggleSidebarMobile = () => {
-  store.dispatch('sidebarConversation/toggleSidebar')
-}
-
-const handleDocsMessage = (listMessageDocs) => {
-  const listMessage = listMessageDocs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  }))
-  const lastDocMessage = listMessageDocs[listMessageDocs.length - 1]
-  return { listMessage, lastDocMessage }
-}
-
-const setListMessage = (listMessageDocs) => {
-  const { listMessage: messages, lastDocMessage: lastDoc } = handleDocsMessage(listMessageDocs)
-  listMessage.value = messages
-  lastDocMessage.value = lastDoc
-}
-
-const handleSetReplyMessage = (message) => {
-  replyMessage.value = message
-}
-
-const clearReplyMessage = () => {
-  replyMessage.value = null
-}
-
-const updateConversationWhenSendMessage = async (newMessage) => {
-  await updateConversation({
-    ...conversationRealtime.value,
-    lastMessage: newMessage,
-    timeEnd: serverTimestamp(),
-    seen: [currentEmail.value],
-  })
-}
-
-const sendMessage = async (content, type) => {
-  const userSendMessage = currentUser.value
-  const newMessage = await saveMessage(
-    conversationRealtime.value.id,
-    userSendMessage,
-    content,
-    replyMessage.value,
-    type
-  )
-  await updateConversationWhenSendMessage(newMessage)
-}
-
-const saveMessageImage = async (url) => {
-  await sendMessage(url, 'image')
-  handleClearTempInputImage()
-  percentUploadImage.value = null
-  replyMessage.value = null
-}
-
-const saveMessageVoice = async (url) => {
-  await sendMessage(url, 'audio')
-  handleClosePreviewChatVoice()
-  replyMessage.value = null
-}
-
-const setPercentLoaderImage = (percent) => {
-  percentUploadImage.value = percent
-}
-
-const handleSendMessage = async () => {
-  if (fileImageInput.value) {
-    uploadImage(
-      'message-image',
-      fileImageInput.value,
-      saveMessageImage,
-      setPercentLoaderImage
-    )
-  } else if (dataChatVoice.value) {
-    uploadByBlobUrl(
-      'message-voice',
-      dataChatVoice.value.blob,
-      dataChatVoice.value.fileName,
-      saveMessageVoice
-    )
-  } else if (inputMessage.value) {
-    await sendMessage(inputMessage.value, 'text')
-    inputMessage.value = ''
-    replyMessage.value = null
-  }
-}
-
-const loadMoreMessage = (listMessageDocs) => {
-  const { listMessage: newMessages, lastDocMessage: lastDoc } = handleDocsMessage(listMessageDocs)
-  if (lastDoc && lastDoc.id !== lastDocMessage.value?.id) {
-    lastDocMessage.value = lastDoc
-    listMessage.value = [...listMessage.value, ...newMessages]
-  }
-}
-
-const handleLoadMoreMessage = () => {
-  unsubscribeLoadMoreMsg.value = getMessageByConversation(
-    conversationRealtime.value.id,
-    loadMoreMessage,
-    lastDocMessage.value
-  )
-}
-
-const setConversationRealtime = (doc) => {
-  conversationRealtime.value = { id: doc.id, ...doc.data() }
-}
-
-const handleFocusInputMessage = async () => {
-  if (conversationRealtime.value) {
-    if (!conversationRealtime.value.seen.includes(currentEmail.value)) {
-      await updateConversation({
-        ...conversationRealtime.value,
-        seen: [...conversationRealtime.value.seen, currentEmail.value],
-      })
+  head() {
+    return {
+      title: this.getTitlePage,
     }
-    await updateConversation({
-      ...conversationRealtime.value,
-      isTyping: [...conversationRealtime.value.isTyping, currentEmail.value],
-    })
-  }
-}
+  },
 
-const handleBlurInputMessage = async () => {
-  if (conversationRealtime.value && conversationRealtime.value.isTyping) {
-    const newIsTyping = conversationRealtime.value.isTyping.filter(email => email !== currentEmail.value)
-    await updateConversation({
-      ...conversationRealtime.value,
-      isTyping: newIsTyping,
-    })
-  }
-}
+  computed: {
+    ...mapGetters({
+      getCurrentMembers: 'conversation/getCurrentMembers',
+      getShowSidebarConversation: 'sidebarConversation/getIsShow',
+      getCurrentEmail: 'account/getAccount',
+    }),
 
-const showModalConversation = () => {
-  store.dispatch('modalChatRoom/openModal')
-  store.dispatch('modalChatRoom/setConversation', conversationRealtime.value)
-}
+    getPartnerUser() {
+      const currentMembers = this.getCurrentMembers
 
-const handleCloseModalAddMember = () => {
-  isShowModalAddMember.value = false
-}
+      const partnerUser = currentMembers.filter(
+        (user) => user.email !== this.getCurrentEmail
+      )[0]
 
-const handleShowModalAddMember = () => {
-  isShowModalAddMember.value = true
-}
+      return partnerUser
+    },
 
-const handleClosePopupLeaveRoom = () => {
-  isShowPopupLeaveRoom.value = false
-}
+    getCurrentUser() {
+      const currentMembers = this.getCurrentMembers
 
-const handleShowPopupLeaveRoom = () => {
-  isShowPopupLeaveRoom.value = true
-}
+      return currentMembers.filter(
+        (user) => user.email === this.getCurrentEmail
+      )[0]
+    },
 
-const handleLeaveRoom = async () => {
-  handleClosePopupLeaveRoom()
-  await updateConversation({
-    ...conversationRealtime.value,
-    member: conversationRealtime.value.member.filter(email => email !== currentEmail.value),
-  })
-  router.push({ name: `index___${$i18n.locale}` })
-}
-
-const handleSetFileImageInput = (fileImage) => {
-  fileImageInput.value = createTempUrlForImageFile(fileImage)
-  isDisableInputMessage.value = true
-  if (fileImageInput.value) inputMessage.value = ''
-  if (isShowPreviewChatVoice.value) {
-    isShowPreviewChatVoice.value = null
-    dataChatVoice.value = null
-  }
-}
-
-const handleClearTempInputImage = () => {
-  fileImageInput.value = null
-  isDisableInputMessage.value = false
-}
-
-const handleShowImageDetail = (src) => {
-  srcImageShow.value = src
-}
-
-const handleCloseShowImageMessage = () => {
-  srcImageShow.value = null
-}
-
-const handleShowPreviewChatVoice = () => {
-  isShowPreviewChatVoice.value = true
-  isDisableInputMessage.value = true
-  inputMessage.value = ''
-  if (fileImageInput.value) fileImageInput.value = null
-}
-
-const handleClosePreviewChatVoice = () => {
-  isShowPreviewChatVoice.value = false
-  dataChatVoice.value = null
-  inputMessage.value = ''
-  isDisableInputMessage.value = false
-}
-
-const handleSetDataChatVoice = (payload) => {
-  dataChatVoice.value = payload
-}
-
-const handleCreateVideoCall = async () => {
-  const roomVideoCall = await stringee.createRoom(conversationRealtime.value.id)
-  flagAutoCancelVideoCall.value = true
-  const newMessage = await saveMessageVideoCall(
-    conversationRealtime.value.id,
-    currentUser.value,
-    roomVideoCall
-  )
-  await updateConversationWhenSendMessage(newMessage)
-  isShowModalCallVideo.value = true
-  currentMessageVideoCall.value = newMessage
-
-  if (conversationRealtime.value.type === 'individual') {
-    const partnerUserQuery = await getUserByEmail(partnerUser.value.email)
-    const currentUserData = currentUser.value
-    infoVideoCall.value = {
-      avatar: partnerUserQuery.avatar,
-      name: partnerUserQuery.fullName,
-    }
-
-    if (partnerUserQuery.isFreeVideoCall === false) {
-      currentMessageVideoCall.value = { ...currentMessageVideoCall.value, status: 'cancel' }
-      await handleCancelVideoCall()
-    } else {
-      await updateUser({ ...partnerUserQuery, isFreeVideoCall: false })
-      await updateUser({ ...currentUserData, isFreeVideoCall: false })
-      setTimeout(async () => {
-        if (flagAutoCancelVideoCall.value) {
-          await handleCancelVideoCall()
-          handleCloseVideoCall()
-          await updateUser({ ...partnerUserQuery, isFreeVideoCall: true })
-          await updateUser({ ...currentUserData, isFreeVideoCall: true })
-          if (unsubscribeCurrentMessageVideoCall.value) {
-            unsubscribeCurrentMessageVideoCall.value()
+    getConversationInfo() {
+      if (this.conversationRealtime) {
+        if (this.conversationRealtime.type === 'group')
+          return {
+            name: this.conversationRealtime.name,
+            avatar: this.conversationRealtime.thumb,
           }
+
+        const partnerUser = this.getPartnerUser
+
+        return partnerUser
+          ? { name: partnerUser.fullName, avatar: partnerUser.avatar }
+          : { name: '', avatar: null }
+      }
+
+      return { name: '', avatar: null }
+    },
+
+    getStatusPartner() {
+      const partnerUser = this.getPartnerUser
+
+      if (partnerUser) {
+        return partnerUser.isActive
+      }
+      return false
+    },
+
+    getUsersSeen() {
+      if (
+        this.conversationRealtime &&
+        this.conversationRealtime.lastMessage &&
+        this.conversationRealtime.lastMessage.user.email ===
+          this.getCurrentEmail
+      ) {
+        const currentMembers = this.getCurrentMembers
+        return currentMembers.filter(
+          (member) =>
+            member.email !== this.getCurrentEmail &&
+            this.conversationRealtime.seen.includes(member.email)
+        )
+      }
+      return []
+    },
+
+    getUsersTyping() {
+      if (this.conversationRealtime && this.conversationRealtime.isTyping) {
+        const currentMembers = this.getCurrentMembers
+        const emailTyping = this.conversationRealtime.isTyping.filter(
+          (email) => email !== this.getCurrentEmail
+        )
+
+        const userTyping = currentMembers.filter(
+          (user) => emailTyping.includes(user.email) && user.isActive
+        )
+        return userTyping
+      }
+      return []
+    },
+
+    getListMessageFooterData() {
+      return {
+        userTyping: this.getUsersTyping,
+        usersSeen: this.getUsersSeen,
+      }
+    },
+
+    getListMessageData() {
+      return {
+        footerData: this.getListMessageFooterData,
+        listMessage: this.listMessage,
+        conversation: this.conversationRealtime,
+      }
+    },
+
+    getHeaderChatSideData() {
+      return {
+        avatar: this.getConversationInfo.avatar,
+        name: this.getConversationInfo.name,
+        conversation: this.conversationRealtime,
+        statusPartner: this.getStatusPartner,
+      }
+    },
+
+    getIsShowLoader() {
+      return !this.conversationRealtime
+    },
+
+    getTitlePage() {
+      if (this.conversationRealtime) {
+        if (this.conversationRealtime.type === 'individual') {
+          return this.conversationRealtime.partnerUser.fullName
         }
-      }, constant.MILISECONDS_CANCEL_VIDEO_CALL)
-      unsubscribeCurrentMessageVideoCall.value = getMessageRealtime(
-        currentMessageVideoCall.value.id,
-        setCurrentMessageVideoCall
+        return this.conversationRealtime.name
+      }
+      return 'Mecsenzo'
+    },
+  },
+
+  watch: {
+    currentConversation(newValue) {
+      if (newValue) {
+        this.unsubscribeSnapMessage = getMessageByConversation(
+          newValue.id,
+          this.setListMessage,
+          this.lastDocMessage
+        )
+
+        this.unsubscribeGetConversationRealtime = getConversationByIdRealTime(
+          newValue.id,
+          this.setConversationRealtime
+        )
+      }
+    },
+
+    async currentMessageVideoCall(newValue) {
+      if (newValue.status === 'accept') {
+        this.flagAutoCancelVideoCall = false
+        this.$router.push({
+          path: 'video-chat',
+          params: { id: this.currentMessageVideoCall.id },
+          name: `video-chat-id___${this.$i18n.locale}`,
+        })
+      } else if (newValue.status === 'cancel') {
+        this.isShowModalCallVideo = false
+        await updateUser({ ...this.getCurrentUser, isFreeVideoCall: true })
+      }
+    },
+  },
+
+  async created() {
+    const idConversation = this.$route.params.id
+    this.currentConversation = await getConversationById(idConversation)
+
+    this.$store.dispatch(
+      'conversation/setCurrentMembers',
+      this.currentConversation.member
+    )
+  },
+
+  mounted() {
+    stringee.setRestToken()
+  },
+
+  beforeDestroy() {
+    if (this.unsubscribeSnapMessage) {
+      this.unsubscribeSnapMessage()
+    }
+
+    if (this.unsubscribeGetConversationRealtime) {
+      this.unsubscribeGetConversationRealtime()
+    }
+  },
+
+  methods: {
+    updateInputMessage(value) {
+      this.inputMessage = value
+    },
+
+    handleSelectEmoji(emoji) {
+      this.inputMessage = this.inputMessage + emoji.data
+    },
+
+    handleToggleSidebarMobile() {
+      this.$store.dispatch('sidebarConversation/toggleSidebar')
+    },
+
+    handleDocsMessage(listMessageDocs) {
+      const listMessage = listMessageDocs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      const lastDocMessage = listMessageDocs[listMessageDocs.length - 1]
+
+      return { listMessage, lastDocMessage }
+    },
+
+    setListMessage(listMessageDocs) {
+      const { listMessage, lastDocMessage } =
+        this.handleDocsMessage(listMessageDocs)
+
+      this.listMessage = listMessage
+      this.lastDocMessage = lastDocMessage
+    },
+
+    handleSetReplyMessage(message) {
+      this.replyMessage = message
+    },
+
+    clearReplyMessage() {
+      this.replyMessage = null
+    },
+
+    async updateConversationWhenSendMessage(newMessage) {
+      await updateConversation({
+        ...this.conversationRealtime,
+        lastMessage: newMessage,
+        timeEnd: serverTimestamp(),
+        seen: [this.getCurrentEmail],
+      })
+    },
+
+    async sendMessage(content, type) {
+      const userSendMessage = this.getCurrentUser
+
+      const newMessage = await saveMessage(
+        this.conversationRealtime.id,
+        userSendMessage,
+        content,
+        this.replyMessage,
+        type
       )
-    }
-  } else {
-    const emailMemberOfConversation = conversationRealtime.value.member
-    const userOfConversation = await getUsersByEmails(emailMemberOfConversation)
-    userOfConversation.forEach(async user => {
-      await updateUser({ ...user, isFreeVideoCall: false })
-    })
-    router.push({
-      name: `video-chat-id___${$i18n.locale}`,
-      params: { id: currentMessageVideoCall.value.id },
-    })
-    infoVideoCall.value = {
-      avatar: conversationRealtime.value.thumb,
-      name: conversationRealtime.value.name,
-    }
-  }
+
+      await this.updateConversationWhenSendMessage(newMessage)
+    },
+
+    async saveMessageImage(url) {
+      await this.sendMessage(url, 'image')
+      this.handleClearTempInputImage()
+
+      this.percentUploadImage = null
+      this.replyMessage = null
+    },
+
+    async saveMessageVoice(url) {
+      await this.sendMessage(url, 'audio')
+      this.handleClosePreviewChatVoice()
+
+      this.replyMessage = null
+    },
+
+    setPercentLoaderImage(percent) {
+      this.percentUploadImage = percent
+    },
+
+    async handleSendMessage() {
+      if (this.fileImageInput) {
+        uploadImage(
+          'message-image',
+          this.fileImageInput,
+          this.saveMessageImage,
+          this.setPercentLoaderImage
+        )
+      } else if (this.dataChatVoice) {
+        uploadByBlobUrl(
+          'message-voice',
+          this.dataChatVoice.blob,
+          this.dataChatVoice.fileName,
+          this.saveMessageVoice
+        )
+      } else if (this.inputMessage) {
+        await this.sendMessage(this.inputMessage, 'text')
+
+        this.inputMessage = ''
+        this.replyMessage = null
+        this.isScrollToBottom = true
+      }
+    },
+
+    loadMoreMessage(listMessageDocs) {
+      const { listMessage, lastDocMessage } =
+        this.handleDocsMessage(listMessageDocs)
+
+      if (lastDocMessage && lastDocMessage.id !== this.lastDocMessage.id) {
+        this.lastDocMessage = lastDocMessage
+        this.listMessage = [...this.listMessage, ...listMessage]
+      }
+    },
+
+    handleLoadMoreMessage() {
+      this.unsubscribeLoadMoreMsg = getMessageByConversation(
+        this.conversationRealtime.id,
+        this.loadMoreMessage,
+        this.lastDocMessage
+      )
+    },
+
+    setConversationRealtime(doc) {
+      this.conversationRealtime = { id: doc.id, ...doc.data() }
+    },
+
+    async handleFocusInputMessage() {
+      if (this.conversationRealtime) {
+        if (!this.conversationRealtime.seen.includes(this.getCurrentEmail)) {
+          await updateConversation({
+            ...this.conversationRealtime,
+            seen: [...this.conversationRealtime.seen, this.getCurrentEmail],
+          })
+        }
+        await updateConversation({
+          ...this.conversationRealtime,
+          isTyping: [
+            ...this.conversationRealtime.isTyping,
+            this.getCurrentEmail,
+          ],
+        })
+      }
+    },
+
+    async handleBlurInputMessage() {
+      if (this.conversationRealtime && this.conversationRealtime.isTyping) {
+        const newIsTyping = this.conversationRealtime.isTyping.filter(
+          (email) => email !== this.getCurrentEmail
+        )
+        await updateConversation({
+          ...this.conversationRealtime,
+          isTyping: newIsTyping,
+        })
+      }
+    },
+
+    showModalConversation() {
+      this.$store.dispatch('modalChatRoom/openModal')
+      this.$store.dispatch(
+        'modalChatRoom/setConversation',
+        this.conversationRealtime
+      )
+    },
+
+    handleCloseModalAddMember() {
+      this.isShowModalAddMember = false
+    },
+
+    handleShowModalAddMember() {
+      this.isShowModalAddMember = true
+    },
+
+    handleClosePopupLeaveRoom() {
+      this.isShowPopupLeaveRoom = false
+    },
+
+    handleShowPopupLeaveRoom() {
+      this.isShowPopupLeaveRoom = true
+    },
+
+    async handleLeaveRoom() {
+      this.handleClosePopupLeaveRoom()
+
+      await updateConversation({
+        ...this.conversationRealtime,
+        member: this.conversationRealtime.member.filter(
+          (email) => email !== this.getCurrentEmail
+        ),
+      })
+
+      this.$router.push({
+        path: '/',
+        name: `index___${this.$i18n.locale}`,
+      })
+    },
+
+    handleSetFileImageInput(fileImage) {
+      this.fileImageInput = createTempUrlForImageFile(fileImage)
+      this.isDisableInputMessage = true
+
+      if (this.fileImageInput) {
+        this.inputMessage = ''
+      }
+      if (this.isShowPreviewChatVoice) {
+        this.isShowPreviewChatVoice = null
+        this.dataChatVoice = null
+      }
+    },
+
+    handleClearTempInputImage() {
+      this.fileImageInput = null
+      this.isDisableInputMessage = false
+    },
+
+    handleShowImageDetail(src) {
+      this.srcImageShow = src
+    },
+
+    handleCloseShowImageMessage() {
+      this.srcImageShow = null
+    },
+
+    handleShowPreviewChatVoice() {
+      this.isShowPreviewChatVoice = true
+      this.isDisableInputMessage = true
+      this.inputMessage = ''
+
+      if (this.fileImageInput) {
+        this.fileImageInput = null
+      }
+    },
+
+    handleClosePreviewChatVoice() {
+      this.isShowPreviewChatVoice = false
+      this.dataChatVoice = null
+      this.inputMessage = ''
+      this.isDisableInputMessage = false
+    },
+
+    handleSetDataChatVoice(payload) {
+      this.dataChatVoice = payload
+    },
+
+    async handleCreateVideoCall() {
+      const roomVideoCall = await stringee.createRoom(
+        this.conversationRealtime.id
+      )
+
+      this.flagAutoCancelVideoCall = true
+
+      const newMessage = await saveMessageVideoCall(
+        this.conversationRealtime.id,
+        this.getCurrentUser,
+        roomVideoCall
+      )
+
+      await this.updateConversationWhenSendMessage(newMessage)
+
+      this.isShowModalCallVideo = true
+
+      this.currentMessageVideoCall = newMessage
+
+      if (this.conversationRealtime.type === 'individual') {
+        const partnerUser = this.getPartnerUser
+        const partnerUserQuery = await getUserByEmail(partnerUser.email)
+        const currentUser = this.getCurrentUser
+
+        this.infoVideoCall = {
+          avatar: partnerUserQuery.avatar,
+          name: partnerUserQuery.fullName,
+        }
+
+        if (partnerUserQuery.isFreeVideoCall === false) {
+          this.currentMessageVideoCall = {
+            ...this.currentMessageVideoCall,
+            status: 'cancel',
+          }
+          await this.handleCancelVideoCall()
+        } else {
+          await updateUser({ ...partnerUserQuery, isFreeVideoCall: false })
+          await updateUser({ ...currentUser, isFreeVideoCall: false })
+
+          setTimeout(async () => {
+            if (this.flagAutoCancelVideoCall) {
+              await this.handleCancelVideoCall()
+              this.handleCloseVideoCall()
+              await updateUser({ ...partnerUserQuery, isFreeVideoCall: true })
+              await updateUser({ ...currentUser, isFreeVideoCall: true })
+
+              if (this.unsubscribeCurrentMessageVideoCall) {
+                this.unsubscribeCurrentMessageVideoCall()
+              }
+            }
+          }, constant.MILISECONDS_CANCEL_VIDEO_CALL)
+
+          this.unsubscribeCurrentMessageVideoCall = getMessageRealtime(
+            this.currentMessageVideoCall.id,
+            this.setCurrentMessageVideoCall
+          )
+        }
+      } else {
+        const emailMemberOfConversation = this.conversationRealtime.member
+        const userOfConversation = await getUsersByEmails(
+          emailMemberOfConversation
+        )
+        userOfConversation.forEach(async (user) => {
+          await updateUser({ ...user, isFreeVideoCall: false })
+        })
+
+        this.$router.push({
+          path: 'video-chat',
+          params: { id: this.currentMessageVideoCall.id },
+          name: `video-chat-id___${this.$i18n.locale}`,
+        })
+
+        this.infoVideoCall = {
+          avatar: this.conversationRealtime.thumb,
+          name: this.conversationRealtime.name,
+        }
+      }
+    },
+
+    async handleCancelVideoCall() {
+      const newLastMessage = {
+        ...this.currentMessageVideoCall,
+        status: 'cancel',
+      }
+      await updateMessageVideoCall(newLastMessage)
+      await this.updateConversationWhenSendMessage(newLastMessage)
+    },
+
+    handleCloseVideoCall() {
+      this.isShowModalCallVideo = false
+      this.flagAutoCancelVideoCall = false
+    },
+
+    setCurrentMessageVideoCall(message) {
+      this.currentMessageVideoCall = message
+    },
+  },
 }
-
-const handleCancelVideoCall = async () => {
-  const newLastMessage = { ...currentMessageVideoCall.value, status: 'cancel' }
-  await updateMessageVideoCall(newLastMessage)
-  await updateConversationWhenSendMessage(newLastMessage)
-}
-
-const handleCloseVideoCall = () => {
-  isShowModalCallVideo.value = false
-  flagAutoCancelVideoCall.value = false
-}
-
-const setCurrentMessageVideoCall = (message) => {
-  currentMessageVideoCall.value = message
-}
-
-// Lifecycle hooks
-onMounted(async () => {
-  const idConversation = route.params.id
-  currentConversation.value = await getConversationById(idConversation)
-  store.dispatch('conversation/setCurrentMembers', currentConversation.value.member)
-  stringee.setRestToken()
-})
-
-onUnmounted(() => {
-  if (unsubscribeSnapMessage.value) unsubscribeSnapMessage.value()
-  if (unsubscribeGetConversationRealtime.value) unsubscribeGetConversationRealtime.value()
-})
-
-// Head configuration for Nuxt 3
-definePageMeta({
-  title: titlePage,
-})
 </script>

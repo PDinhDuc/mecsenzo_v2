@@ -60,6 +60,7 @@ const getConversationsSpace = function (currentEmail, callback, lastDoc) {
     lastDoc,
     callback
   )
+
   return unsubscribe
 }
 

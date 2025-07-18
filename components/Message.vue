@@ -3,22 +3,24 @@
     <div
       :id="message.id"
       :class="`flex items-end mt-3 
-      ${isMyMessage(message) ? 'flex-row-reverse justify-start' : ''}`"
+      ${isMyMessage(message) ? 'flex-row-reverse justify-start' : ''} 
+      `"
     >
-      <Avatar
+      <avatar
         v-if="!isMyMessage(message)"
-        :is-have-avatar="!!message.user.avatar"
-        :src-image="message.user.avatar"
-        :first-char="message.user && message.user.fullName.charAt(0)"
-        size="small"
         v-tooltip.top-start="{
           content: message.user && message.user.fullName,
           classes: 'tooltip tooltip--left',
         }"
+        :is-have-avatar="!!message.user.avatar"
+        :src-image="message.user.avatar"
+        :first-char="message.user && message.user.fullName.charAt(0)"
+        size="small"
       />
       <div
         :class="`max-w-[80%] md:max-w-[45%] rounded-[10px] peer flex flex-col 
-        ${isMyMessage(message) ? 'items-end' : 'items-start'}`"
+        ${isMyMessage(message) ? 'items-end' : 'items-start'}   
+        `"
       >
         <a
           v-if="message.reply !== null"
@@ -29,7 +31,8 @@
                     ? 'flex'
                     : 'bg-[#f6f9fa] dark:bg-[rgba(255,255,255,0.1)]'
                 }
-                ${isMyMessage(message) ? 'flex justify-end' : ''}`"
+                ${isMyMessage(message) ? 'flex justify-end' : ''} 
+                `"
         >
           <div v-if="message.reply.type === 'text'" class="p-2">
             <p
@@ -45,7 +48,8 @@
           </div>
           <div
             v-else-if="message.reply.type === 'image'"
-            :class="`relative max-w-[50%]`"
+            :class="`relative  max-w-[50%]
+             `"
           >
             <img
               :src="message.reply.content"
@@ -58,17 +62,17 @@
           </div>
         </a>
         <div
-          :class="`ml-2 rounded-[10px] max-w-full bg-[#e4e6eb] ${
-            isMyMessage(message) ? getBgMessage : 'dark:bg-dark_bg_message'
-          }`"
           v-tooltip.top-start="{
             content: getTooltipContent(message.timestamp),
             classes: 'tooltip tooltip--left',
           }"
+          :class="`ml-2 rounded-[10px] max-w-full bg-[#e4e6eb] ${
+            isMyMessage(message) ? getBgMessage : 'dark:bg-dark_bg_message'
+          } `"
         >
           <div v-if="message.type === 'text'" class="p-2">
             <p
-              :class="`text-[1.1rem] truncate max-w-full ${
+              :class="`text-[1.1rem]  truncate max-w-full ${
                 isMyMessage(message)
                   ? 'text-white'
                   : 'text-[#333] dark:text-white'
@@ -106,7 +110,7 @@
               class="w-full h-full flex flex-col justify-center items-center"
             >
               <p
-                :class="`text-[1rem] truncate max-w-full font-semibold ${
+                :class="`text-[1rem]  truncate max-w-full font-semibold ${
                   isMyMessage(message) ? 'text-white' : 'text-[#333] dark:text-white'
                 }`"
               >
@@ -114,7 +118,7 @@
               </p>
               <p
                 v-if="message.status === 'cancel'"
-                :class="`text-[1rem] truncate max-w-full ${
+                :class="`text-[1rem]  truncate max-w-full ${
                   isMyMessage(message)
                     ? 'text-white'
                     : 'text-[#333] dark:text-white'
@@ -124,7 +128,7 @@
               </p>
               <div v-if="message.status === 'end'">
                 <p
-                  :class="`text-[1rem] truncate max-w-full ${
+                  :class="`text-[1rem]  truncate max-w-full ${
                     isMyMessage(message)
                       ? 'text-white'
                       : 'text-[#333] dark:text-white'
@@ -152,6 +156,7 @@
           </div>
         </div>
       </div>
+
       <div
         :class="`relative hidden peer-hover:block before:content-['']
         before:absolute before:w-[14px] before:h-full hover:block 
@@ -160,7 +165,8 @@
           isMyMessage(message)
             ? 'right-2 before:left-[100%]'
             : 'left-2 before:right-[100%]'
-        }`"
+        }
+         `"
       >
         <button
           class="h-[32px] w-[32px] rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-[rgba(255,255,255,0.1)]"
@@ -173,77 +179,89 @@
   </div>
 </template>
 
-<script setup>
-import { computed } from 'vue'
-import { useStore, useRouter, useNuxtApp } from '#app'
+<script>
 import { serverTimestamp } from '@firebase/firestore'
+import { mapGetters } from 'vuex'
 import { updateMessageVideoCall } from '~/api/message.api'
 import { calcDurationVideoCall, formatDateForMessage } from '~/helper/date'
-import Avatar from '~/components/Avatar.vue'
-import AudioDisplay from '~/components/AudioDisplay.vue'
 
-// Nuxt app context for i18n and router
-const { $t } = useNuxtApp()
-const store = useStore()
-const router = useRouter()
+export default {
+  props: {
+    message: {
+      type: Object,
+      default: () => null,
+    },
 
-// Props
-const props = defineProps({
-  message: {
-    type: Object,
-    default: () => null,
+    conversation: {
+      type: Object,
+      default: () => null,
+    },
   },
-  conversation: {
-    type: Object,
-    default: () => null,
+
+  emits: ['set-reply', 'show-image-detail'],
+
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
+
+    isMyMessage() {
+      return (message) => {
+        if (message.user.email === this.getCurrentEmail) return true
+        return false
+      }
+    },
+
+    formatDateForMessage() {
+      return (timestamp) => {
+        return formatDateForMessage(timestamp)
+      }
+    },
+
+    getTooltipContent() {
+      return (time) => this.formatDateForMessage(time)
+    },
+
+    getBgMessage() {
+      if (this.conversation) {
+        return `!bg-[${this.conversation.colorChat}]`
+      }
+      return '!bg-[#0084ff]'
+    },
+
+    getTimeVideoCall() {
+      return (message) => {
+        return calcDurationVideoCall(message.timeStart, message.timeEnd)
+      }
+    },
   },
-})
 
-// Emits
-const emit = defineEmits(['set-reply', 'show-image-detail'])
+  methods: {
+    handleSetReplyMessage(message) {
+      this.$emit('set-reply', message)
+    },
 
-// Computed properties
-const currentEmail = computed(() => store.getters['account/getAccount'])
+    handleShowImageDetail(srcImage) {
+      this.$emit('show-image-detail', srcImage)
+    },
 
-const isMyMessage = (message) => {
-  return message.user.email === currentEmail.value
-}
+    async handleJoinVideoCall(message) {
+      const newLastMessage = {
+        ...this.message,
+        emailJoin: [...this.message.emailJoin, this.getCurrentEmail],
+        timeStart: serverTimestamp(),
+      }
 
-const getTooltipContent = (timestamp) => {
-  return formatDateForMessage(timestamp)
-}
+      const idMessage = this.message.id
 
-const getBgMessage = computed(() => {
-  return props.conversation
-    ? `!bg-[${props.conversation.colorChat}]`
-    : '!bg-[#0084ff]'
-})
+      await updateMessageVideoCall(newLastMessage)
 
-const getTimeVideoCall = (message) => {
-  return calcDurationVideoCall(message.timeStart, message.timeEnd)
-}
-
-// Methods
-const handleSetReplyMessage = (message) => {
-  emit('set-reply', message)
-}
-
-const handleShowImageDetail = (srcImage) => {
-  emit('show-image-detail', srcImage)
-}
-
-const handleJoinVideoCall = async (message) => {
-  const newLastMessage = {
-    ...props.message,
-    emailJoin: [...props.message.emailJoin, currentEmail.value],
-    timeStart: serverTimestamp(),
-  }
-
-  await updateMessageVideoCall(newLastMessage)
-
-  router.push({
-    name: `video-chat-id___${$t('locale')}`,
-    params: { id: props.message.id },
-  })
+      this.$router.push({
+        path: 'video-chat',
+        params: { id: idMessage },
+        name: `video-chat-id___${this.$i18n.locale}`,
+      })
+    },
+  },
 }
 </script>

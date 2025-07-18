@@ -25,26 +25,31 @@
   </div>
 </template>
 
-<script setup>
-import ProgressLoader from '~/components/ProgressLoader.vue'
+<script>
+import ProgressLoader from './ProgressLoader.vue'
 
-// Props
-const props = defineProps({
-  fileImageInput: {
-    type: Object,
-    default: () => null,
+export default {
+  components: { ProgressLoader },
+
+  props: {
+    fileImageInput: {
+      type: File,
+      default: () => null,
+    },
+    percentUploadImage: {
+      type: Number,
+      default: () => null,
+    },
   },
-  percentUploadImage: {
-    type: Number,
-    default: () => null,
+
+  emits: ['clear-temp-input-image'],
+
+  methods: {
+    handleClearTempInputImage() {
+      this.$emit('clear-temp-input-image')
+    },
   },
-})
-
-// Emits
-const emit = defineEmits(['clear-temp-input-image'])
-
-// Methods
-const handleClearTempInputImage = () => {
-  emit('clear-temp-input-image')
 }
 </script>
+
+<style></style>

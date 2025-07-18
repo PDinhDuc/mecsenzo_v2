@@ -38,7 +38,7 @@ export const getNotify = function (currentEmail, callback, lastDocNotify) {
       value: 'desc',
     },
     constant.SIZE_LOAD_NOTIFY,
-    lastDocNotify?.value,
+    lastDocNotify,
     callback
   )
 }

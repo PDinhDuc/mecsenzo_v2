@@ -4,7 +4,9 @@
       v-if="lastMessageVideoCall"
       class="fixed top-0 left-0 bottom-0 right-0 overflow-hidden z-[1000]"
     >
-      <div class="w-full h-full bg-[rgba(0,0,0,0.5)] flex justify-center items-center">
+      <div
+        class="w-full h-full bg-[rgba(0,0,0,0.5)] flex justify-center items-center"
+      >
         <div v-if="infoVideoCall" class="w-[60%] h-[60%]">
           <div class="flex justify-center items-center h-[90%]">
             <div class="flex flex-col items-center">
@@ -12,7 +14,9 @@
                 <Avatar
                   :is-have-avatar="!!infoVideoCall.avatar"
                   :src-image="infoVideoCall.avatar"
-                  :first-char="infoVideoCall.name && infoVideoCall.name.charAt(0)"
+                  :first-char="
+                    infoVideoCall.name && infoVideoCall.name.charAt(0)
+                  "
                   size="large"
                 />
               </div>
@@ -45,142 +49,196 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+<script>
 import { serverTimestamp } from '@firebase/firestore'
+import { mapGetters } from 'vuex'
 import {
   getConversationById,
   getConversationOfUserRealtime,
   updateConversation,
 } from '~/api/conversation'
-import { updateMessageVideoCall } from '../api/messeage.js'
-import { getUserByEmail, getUserRealtimeByEmail, updateUser } from '~/api/user'
-import { useAccountStore } from '~/stores/account.js'
-
-const router = useRouter()
-
-const currentUser = ref(null)
-const allConversations = ref(null)
-const lastMessageVideoCall = ref(null)
-const infoVideoCall = ref(null)
-let unsubGetUser = null
-let unsubGetConversation = null
-
-const getCurrentEmail = computed(() => useAccountStore().getAccount)
-
-const setCurrentUser = (user) => {
-  currentUser.value = user
-}
-
-const setAllConversations = (conversationsDoc) => {
-  allConversations.value = conversationsDoc.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }))
-}
-
-watch(allConversations, (newValue) => {
-  if (newValue) {
-    const lastMessages = newValue.map((c) => c.lastMessage)
-    const exclude = JSON.parse(localStorage.getItem('excludeMessageVideoCall') || '[]')
-
-    lastMessageVideoCall.value = lastMessages.find((msg) => {
-      return (
-        msg &&
-        msg.type === 'videoCall' &&
-        msg.status === 'pending' &&
-        msg.user.email !== getCurrentEmail.value &&
-        !exclude.includes(msg.id)
-      )
-    })
-  }
-})
-
-watch(lastMessageVideoCall, async (msg) => {
-  if (msg) {
-    const conv = await getConversationById(msg.conversation)
-    if (conv.type === 'individual') {
-      const email = conv.member.find((e) => e !== getCurrentEmail.value)
-      const user = await getUserByEmail(email)
-      infoVideoCall.value = {
-        name: user.fullName,
-        avatar: user.avatar,
-        conversation: conv,
-      }
-    } else {
-      infoVideoCall.value = {
-        name: conv.name,
-        avatar: conv.thumb,
-        conversation: conv,
-      }
+import { updateMessageVideoCall } from '~/api/message.api'
+import {
+  getUserByEmail,
+  getUserRealtimeByEmail,
+  updateUser,
+} from '~/api/user.api'
+export default {
+  data() {
+    return {
+      currentUser: null,
+      allConversations: null,
+      unsubGetUser: null,
+      unsubGetConversation: null,
+      lastMessageVideoCall: null,
+      infoVideoCall: null,
     }
-  }
-})
+  },
 
-const updateConversationWhenSendMessage = async (message) => {
-  const conv = await getConversationById(message.conversation)
-  await updateConversation({
-    ...conv,
-    lastMessage: message,
-    timeEnd: serverTimestamp(),
-    seen: [getCurrentEmail.value],
-  })
-}
+  computed: {
+    ...mapGetters({
+      getCurrentEmail: 'account/getAccount',
+    }),
+  },
 
-const handleCancelVideoCall = async () => {
-  const user = await getUserByEmail(getCurrentEmail.value)
-  await updateUser({ ...user, isFreeVideoCall: true })
+  watch: {
+    allConversations: {
+      handler(newValue) {
+        if (newValue) {
+          const lastMessages = newValue.map(
+            (conversation) => conversation.lastMessage
+          )
+          const excludeMessageVideoCall =
+            localStorage.getItem('excludeMessageVideoCall') || []
 
-  if (infoVideoCall.value.conversation.type === 'individual') {
-    const newMsg = {
-      ...lastMessageVideoCall.value,
-      status: 'cancel',
-    }
-    await updateMessageVideoCall(newMsg)
-    await updateConversationWhenSendMessage(newMsg)
-  } else {
-    const exclude = JSON.parse(localStorage.getItem('excludeMessageVideoCall') || '[]')
-    localStorage.setItem(
-      'excludeMessageVideoCall',
-      JSON.stringify([...exclude, lastMessageVideoCall.value.id])
+          this.lastMessageVideoCall = lastMessages.filter((message) => {
+            return (
+              message &&
+              message.type === 'videoCall' &&
+              message.status === 'pending' &&
+              message.user.email !== this.getCurrentEmail &&
+              !excludeMessageVideoCall.includes(message.id)
+            )
+          })[0]
+        }
+      },
+    },
+
+    lastMessageVideoCall: {
+      async handler(newValue) {
+        if (newValue) {
+          const videoCallConversation = await getConversationById(
+            newValue.conversation
+          )
+          if (videoCallConversation.type === 'individual') {
+            const emailPartner = videoCallConversation.member.filter(
+              (email) => email !== this.getCurrentEmail
+            )[0]
+            const userPartner = await getUserByEmail(emailPartner)
+
+            this.infoVideoCall = {
+              name: userPartner.fullName,
+              avatar: userPartner.avatar,
+              conversation: videoCallConversation,
+            }
+          } else {
+            this.infoVideoCall = {
+              name: videoCallConversation.name,
+              avatar: videoCallConversation.thumb,
+              conversation: videoCallConversation,
+            }
+          }
+        }
+      },
+    },
+  },
+
+  async created() {
+    this.unsubGetUser = await getUserRealtimeByEmail(
+      this.getCurrentEmail,
+      this.setCurrentUser
     )
-    lastMessageVideoCall.value = null
-  }
+    this.unsubGetConversation = getConversationOfUserRealtime(
+      this.getCurrentEmail,
+      this.setAllConversations,
+      null
+    )
+  },
+
+  beforeDestroy() {
+    if (this.unsubGetUser) {
+      this.unsubGetUser()
+    }
+    if (this.unsubGetConversation) {
+      this.unsubGetConversation()
+    }
+  },
+
+  methods: {
+    setCurrentUser(user) {
+      this.currentUser = user
+    },
+
+    setAllConversations(conversationsDoc) {
+      this.allConversations = conversationsDoc.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+    },
+
+    async updateConversationWhenSendMessage(newMessage) {
+      const videoCallConversation = await getConversationById(
+        newMessage.conversation
+      )
+
+      await updateConversation({
+        ...videoCallConversation,
+        lastMessage: newMessage,
+        timeEnd: serverTimestamp(),
+        seen: [this.getCurrentEmail],
+      })
+    },
+
+    async handleCancelVideoCall() {
+      const currentUser = await getUserByEmail(this.getCurrentEmail)
+      await updateUser({ ...currentUser, isFreeVideoCall: true })
+
+      if (this.infoVideoCall.type === 'individual') {
+        const newLastMessage = {
+          ...this.lastMessageVideoCall,
+          status: 'cancel',
+        }
+        await updateMessageVideoCall(newLastMessage)
+        await this.updateConversationWhenSendMessage(newLastMessage)
+      } else {
+        const excludeMessageVideoCall =
+          localStorage.getItem('excludeMessageVideoCall') || []
+
+        localStorage.setItem('excludeMessageVideoCall', [
+          ...excludeMessageVideoCall,
+          this.lastMessageVideoCall.id,
+        ])
+
+        this.lastMessageVideoCall = null
+      }
+    },
+
+    async acceptVideoCall() {
+      let newLastMessage
+      if (this.infoVideoCall.conversation.type === 'individual') {
+        newLastMessage = {
+          ...this.lastMessageVideoCall,
+          status: 'accept',
+          timeStart: serverTimestamp(),
+          emailJoin: [
+            ...this.lastMessageVideoCall.emailJoin,
+            this.getCurrentEmail,
+          ],
+        }
+      } else {
+        newLastMessage = {
+          ...this.lastMessageVideoCall,
+          emailJoin: [
+            ...this.lastMessageVideoCall.emailJoin,
+            this.getCurrentEmail,
+          ],
+          timeStart: serverTimestamp(),
+        }
+      }
+
+      const idMessage = this.lastMessageVideoCall.id
+
+      await updateMessageVideoCall(newLastMessage)
+      await this.updateConversationWhenSendMessage(newLastMessage)
+
+      this.$router.push({
+        path: 'video-chat',
+        params: { id: idMessage },
+        name: `video-chat-id___${this.$i18n.locale}`,
+      })
+    },
+  },
 }
-
-const acceptVideoCall = async () => {
-  const isIndividual = infoVideoCall.value.conversation.type === 'individual'
-  const newMsg = {
-    ...lastMessageVideoCall.value,
-    status: 'accept',
-    timeStart: serverTimestamp(),
-    emailJoin: [
-      ...(lastMessageVideoCall.value.emailJoin || []),
-      getCurrentEmail.value,
-    ],
-  }
-
-  await updateMessageVideoCall(newMsg)
-  await updateConversationWhenSendMessage(newMsg)
-
-  router.push({
-    path: '/video-chat',
-    params: { id: lastMessageVideoCall.value.id },
-  })
-}
-
-onMounted(async () => {
-  unsubGetUser = await getUserRealtimeByEmail(getCurrentEmail.value, setCurrentUser)
-  unsubGetConversation = getConversationOfUserRealtime(
-    getCurrentEmail.value,
-    setAllConversations,
-    null
-  )
-})
-
-onBeforeUnmount(() => {
-  if (unsubGetUser) unsubGetUser()
-  if (unsubGetConversation) unsubGetConversation()
-})
 </script>
+
+<style></style>

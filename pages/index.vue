@@ -1,47 +1,56 @@
 <template>
   <div
     :class="`flex-1 flex justify-center items-center ml-0 md:ml-4 text-gray-500 bg-white shadow-2xl rounded-[20px] 
-    p-[36px] md:pl-[36px] overflow-x-hidden dark:bg-dark_bg_light
-    ${showSidebarConversation ? 'pl-[100px]' : 'pl-[36px]'}`"
+    p-[36px]  md:pl-[36px] overflow-x-hidden dark:bg-dark_bg_light
+     ${getShowSidebarConversation ? 'pl-[100px]' : 'pl-[36px]'}
+    `"
   >
-    {{ t('chatSide.noConversation') }}
+    {{ $t('chatSide.noConversation') }}
     <div
       :class="`noSelect cursor-pointer absolute w-[50px] 
       h-[50px] top-[30%] left-[0] flex sm:hidden
       justify-center items-center bg-white rounded-full 
       text-dark_primary shadow-xl hover:bg-dark_primary hover:text-white
       transition-all
-      ${showSidebarConversation ? 'translate-x-[70px]' : 'translate-x-[-20px]'}`"
-      @click="toggleSidebarMobile"
+      ${
+        getShowSidebarConversation
+          ? 'translate-x-[70px]'
+          : 'translate-x-[-20px]'
+      }`"
+      @click="handleToggleSidebarMobile"
     >
-      <fa v-if="!showSidebarConversation" icon="angles-right" class="ml-3" />
+      <fa v-if="!getShowSidebarConversation" icon="angles-right" class="ml-3" />
       <fa v-else icon="angles-left" class="ml-3" />
     </div>
   </div>
 </template>
 
-<script setup>
-import { useHead } from '@unhead/vue'
+<script>
+import { mapGetters } from 'vuex'
 
-// Nuxt utilities
-const { t } = useI18n()
+export default {
+  name: 'IndexPage',
 
-// Define layout and middleware
-definePageMeta({
-  layout: 'default',
+  layout: 'chat',
+
   middleware: ['check-auth', 'auth-required'],
-})
 
-// Define page metadata
-useHead({
-  title: 'Mecsenzo',
-})
+  head() {
+    return {
+      title: 'Mecsenzo',
+    }
+  },
 
-// Reactive state for sidebar
-const showSidebarConversation = useState('sidebarConversation', () => false)
+  computed: {
+    ...mapGetters({
+      getShowSidebarConversation: 'sidebarConversation/getIsShow',
+    }),
+  },
 
-// Methods
-const toggleSidebarMobile = () => {
-  showSidebarConversation.value = !showSidebarConversation.value
+  methods: {
+    handleToggleSidebarMobile() {
+      this.$store.dispatch('sidebarConversation/toggleSidebar')
+    },
+  },
 }
 </script>

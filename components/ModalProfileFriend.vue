@@ -9,6 +9,7 @@
           {{ $t('profileModal.heading') }}
         </h3>
       </div>
+
       <div class="flex flex-col items-center justify-center">
         <div
           class="grid grid-cols-[20%_70%_10%] w-full mt-2 items-center mb-[12px]"
@@ -19,11 +20,12 @@
             {{ $t('profileModal.fullname') }}
           </p>
           <p
-            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139)] focus:border-b-[#ff7200]"
+            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139] focus:border-b-[#ff7200]"
           >
             {{ user.fullName }}
           </p>
         </div>
+
         <div
           class="grid grid-cols-[20%_70%_10%] w-full mt-2 items-center mb-[12px]"
         >
@@ -33,11 +35,12 @@
             {{ $t('profileModal.age') }}
           </p>
           <p
-            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139)] focus:border-b-[#ff7200]"
+            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139] focus:border-b-[#ff7200]"
           >
             {{ user.age }}
           </p>
         </div>
+
         <div
           class="grid grid-cols-[20%_70%_10%] w-full mt-2 items-center mb-[12px]"
         >
@@ -47,11 +50,12 @@
             {{ $t('profileModal.address') }}
           </p>
           <p
-            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139)] focus:border-b-[#ff7200]"
+            class="appearance-none outline-none w-full px-3 text-[1rem] sm:text-[1.2rem] py-2 border-b-[2px] border-b-[rgb(100,116,139] focus:border-b-[#ff7200]"
           >
             {{ user.address }}
           </p>
         </div>
+
         <Avatar
           :is-have-avatar="user && !!user.avatar"
           :src-image="user && user.avatar"
@@ -67,48 +71,42 @@
             color="#ff7200"
             size="large"
             :handle-click="handleRedirectChat"
+            >{{ $t('addFriendTab.invitationTab.chat') }}</Button
           >
-            {{ $t('addFriendTab.invitationTab.chat') }}
-          </Button>
           <Button
             color="#ff7200"
             variant="outline"
             size="large"
             :handle-click="closeModal"
+            >{{ $t('profileModal.close') }}</Button
           >
-            {{ $t('profileModal.close') }}
-          </Button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { useNuxtApp } from '#app'
-import Avatar from '~/components/Avatar.vue'
-import Button from '~/components/Button.vue'
-
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-
-// Props
-const props = defineProps({
-  user: {
-    type: Object,
-    default: () => ({}),
+<script>
+export default {
+  props: {
+    user: {
+      type: Object,
+      default: () => {},
+    },
   },
-})
 
-// Emits
-const emit = defineEmits(['redirect-chat', 'close-modal'])
+  emits: ['redirect-chat', 'close-modal'],
 
-// Methods
-const handleRedirectChat = () => {
-  emit('redirect-chat', props.user)
-}
+  methods: {
+    handleRedirectChat() {
+      this.$emit('redirect-chat', this.user)
+    },
 
-const closeModal = () => {
-  emit('close-modal')
+    closeModal() {
+      this.$emit('close-modal')
+    },
+  },
 }
 </script>
+
+<style></style>

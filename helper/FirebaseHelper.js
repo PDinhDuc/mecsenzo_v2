@@ -6,7 +6,7 @@ import {
 } from 'firebase/storage'
 import { serverTimestamp } from '@firebase/firestore'
 import { v4 } from 'uuid'
-import { storage } from '../firebase/config.js'
+import { storage } from '@/firebase/config'
 
 export const addTimeStamp = function (obj) {
   return {

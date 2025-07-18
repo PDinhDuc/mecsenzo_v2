@@ -29,59 +29,57 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
-import LoaderMessage from '~/components/LoaderMessage.vue'
-import ListMessageFooter from '~/components/ListMessageFooter.vue'
-import Message from '~/components/Message.vue'
-
-// Props
-const props = defineProps({
-  listMessageData: {
-    type: Object,
-    default: () => null,
+<script>
+export default {
+  props: {
+    listMessageData: {
+      type: Object,
+      default: () => null,
+    },
   },
-})
 
-// Emits
-const emit = defineEmits([
-  'list-msg:load-more-message',
-  'list-msg:set-reply',
-  'list-msg:show-image-detail',
-])
+  emits: [
+    'list-msg:load-more-message',
+    'list-msg:set-reply',
+    'list-msg:show-image-detail',
+  ],
 
-// Reactive state
-const isScrollToBottom = ref(true)
-const containerMsg = ref(null)
-
-// Watch for listMessageData changes to scroll to bottom
-watch(
-  () => props.listMessageData?.listMessage,
-  () => {
-    if (isScrollToBottom.value && containerMsg.value) {
-      containerMsg.value.scrollTo({
-        top: containerMsg.value.scrollHeight,
-        behavior: 'smooth',
-      })
+  data() {
+    return {
+      isScrollToBottom: true,
     }
   },
-  { deep: true }
-)
 
-// Methods
-const onScrollContainerMessage = (e) => {
-  if (e.target.scrollTop === 0) {
-    emit('list-msg:load-more-message')
-    isScrollToBottom.value = false
-  }
-}
+  updated() {
+    this.scrollTopBottomContainerChat()
+  },
 
-const handleSetReplyMessage = (replyMessage) => {
-  emit('list-msg:set-reply', replyMessage)
-}
+  methods: {
+    scrollTopBottomContainerChat() {
+      if (this.isScrollToBottom) {
+        const containerMessage = this.$refs.containerMsg
+        containerMessage.scrollTo({
+          top: containerMessage.scrollHeight,
+          behavior: 'smooth',
+        })
+      }
+    },
 
-const handleShowImageDetail = (srcImage) => {
-  emit('list-msg:show-image-detail', srcImage)
+    onScrollContainerMessage(e) {
+      if (e.target.scrollTop === 0) {
+        this.$emit('list-msg:load-more-message')
+        this.isScrollToBottom = false
+      }
+    },
+
+    handleSetReplyMessage(replyMessage) {
+      this.$emit('list-msg:set-reply', replyMessage)
+    },
+
+    handleShowImageDetail(srcImage) {
+      this.$emit('list-msg:show-image-detail', srcImage)
+    },
+  },
 }
 </script>
 

@@ -4,7 +4,8 @@ import { defineStore } from 'pinia'
 
 export const useConversationStore = defineStore('conversation',{
   state: ()=>({
-    currentMembers: []
+    currentMembers: [],
+    currentConversation: {}
   }),
 
   actions: {
@@ -15,6 +16,7 @@ export const useConversationStore = defineStore('conversation',{
   },
 
   getters: {
-    getCurrentMembers: (state)=> state.members
+    getCurrentMembers: (state)=> state.currentMembers,
+    getCurrentConversation: (state) => state.currentConversation
   }
 })

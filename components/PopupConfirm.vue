@@ -19,43 +19,40 @@
             variant="outline"
             size="large"
             :handle-click="closeModal"
+            >{{ $t('profileModal.close') }}</Button
           >
-            {{ $t('profileModal.close') }}
-          </Button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { useNuxtApp } from '#app'
-import Button from '~/components/Button.vue'
+<script>
+export default {
+  props: {
+    content: {
+      type: String,
+      default: () => '',
+    },
 
-// Nuxt app context for i18n
-const { $t } = useNuxtApp()
-
-// Props
-const props = defineProps({
-  content: {
-    type: String,
-    default: '',
+    nameBtnAction: {
+      type: String,
+      default: () => this.$t('popupConfirm.accept'),
+    },
   },
-  nameBtnAction: {
-    type: String,
-    default: () => $t('popupConfirm.accept'),
+
+  emits: ['close-popup', 'confirm-popup'],
+
+  methods: {
+    closeModal() {
+      this.$emit('close-popup')
+    },
+
+    handleConfirm() {
+      this.$emit('confirm-popup')
+    },
   },
-})
-
-// Emits
-const emit = defineEmits(['close-popup', 'confirm-popup'])
-
-// Methods
-const closeModal = () => {
-  emit('close-popup')
-}
-
-const handleConfirm = () => {
-  emit('confirm-popup')
 }
 </script>
+
+<style></style>
